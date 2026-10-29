@@ -1,0 +1,202 @@
+<section class="design-parts-page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a routerLink="/designs">Design</a><span>/</span>
+    <a routerLink="/projects">Projects</a><span>/</span>
+    <span>{{ project()?.projectName ?? 'Project' }}</span><span>/</span>
+    <span>Design Part</span>
+  </nav>
+
+  <header class="workspace-header">
+    <div>
+      <p class="eyebrow">PROJECT DESIGN WORKSPACE</p>
+      <h1>{{ project()?.projectName ?? 'Design Part' }} Design list</h1>
+      <p class="project-reference">
+        Project: <strong>{{ project()?.projectName ?? 'Loading project…' }}</strong>
+        @if (project()) { <span>· {{ project()?.projectNumber }}</span> }
+      </p>
+    </div>
+    @if (permissions().canCreateAssembly) {
+      <button class="primary-button" type="button" (click)="startMainAssembly()">Add main assembly</button>
+    }
+  </header>
+
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+  @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }
+
+  @if (editor() === 'main-assembly' || editor() === 'sub-assembly') {
+    <section class="panel editor" aria-labelledby="assembly-form-title">
+      <h2 id="assembly-form-title">
+        {{ editor() === 'main-assembly' ? 'Add main assembly' : 'Add subassembly' }}
+      </h2>
+      <form #assemblyForm="ngForm" (ngSubmit)="saveAssembly(assemblyForm)">
+        <div class="form-grid">
+          <label>Assembly number
+            <input name="assemblyNumber" [(ngModel)]="assemblyDraft.assemblyNumber" required maxlength="50" />
+          </label>
+          <label>Assembly name
+            <input name="assemblyName" [(ngModel)]="assemblyDraft.name" required maxlength="120" />
+          </label>
+          <label class="full-width">Description
+            <textarea name="assemblyDescription" [(ngModel)]="assemblyDraft.description" maxlength="2000" rows="2"></textarea>
+          </label>
+        </div>
+        @if (editor() === 'sub-assembly') {
+          <p class="field-help">Main assembly: {{ selectedMainAssembly()?.assemblyNumber }} · {{ selectedMainAssembly()?.name }}</p>
+        }
+        <div class="form-actions">
+          <button class="primary-button" type="submit" [disabled]="assemblyForm.invalid || saving()">
+            {{ saving() ? 'Saving…' : 'Save assembly' }}
+          </button>
+          <button class="secondary-button" type="button" (click)="cancelEditor()">Cancel</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (editor() === 'part') {
+    <section class="panel editor" aria-labelledby="part-form-title">
+      <h2 id="part-form-title">Add part</h2>
+      <form #partForm="ngForm" (ngSubmit)="savePart(partForm)">
+        <div class="form-grid">
+          <label>Main assembly
+            <select name="mainAssembly" [ngModel]="selectedMainAssemblyId()"
+              (ngModelChange)="onMainAssemblyChange($event)" required>
+              <option [ngValue]="null">Select a main assembly</option>
+              @for (assembly of mainAssemblies(); track assembly.id) {
+                <option [ngValue]="assembly.id">{{ assembly.assemblyNumber }} · {{ assembly.name }}</option>
+              }
+            </select>
+          </label>
+          <label>Subassembly (optional)
+            <select name="subAssembly" [ngModel]="selectedSubAssemblyId()"
+              (ngModelChange)="selectedSubAssemblyId.set($event)" [disabled]="!selectedMainAssembly()">
+              <option [ngValue]="null">— Directly under main assembly —</option>
+              @for (assembly of selectedMainAssembly()?.subAssemblies ?? []; track assembly.id) {
+                <option [ngValue]="assembly.id">{{ assembly.assemblyNumber }} · {{ assembly.name }}</option>
+              }
+            </select>
+          </label>
+          <label>Part number
+            <input name="partNumber" [(ngModel)]="partDraft.partNumber" required maxlength="50" />
+          </label>
+          <label>Part name
+            <input name="partName" [(ngModel)]="partDraft.partName" required maxlength="120" />
+          </label>
+          <label>Quantity
+            <input type="number" name="quantity" [(ngModel)]="partDraft.quantity" required min="0.001" step="0.001" />
+          </label>
+          <label>Make
+            <input name="make" [(ngModel)]="partDraft.make" maxlength="100" />
+          </label>
+          <label class="full-width">Description
+            <textarea name="description" [(ngModel)]="partDraft.description" maxlength="2000" rows="2"></textarea>
+          </label>
+          <label class="full-width">File path
+            <input name="filePath" [(ngModel)]="partDraft.filePath" maxlength="2048"
+              placeholder="Enter a file path; no file will be uploaded" autocomplete="off" />
+          </label>
+          <label>Start date
+            <input type="date" name="startDate" [(ngModel)]="partDraft.startDate" />
+          </label>
+          <label>Completed date
+            <input type="date" name="completedDate" [(ngModel)]="partDraft.completedDate" />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="primary-button" type="submit" [disabled]="partForm.invalid || saving()">
+            {{ saving() ? 'Saving…' : 'Save part' }}
+          </button>
+          <button class="secondary-button" type="button" (click)="cancelEditor()">Cancel</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (loading()) {
+    <section class="panel empty-state" role="status">Loading project design list…</section>
+  } @else if (mainAssemblies().length === 0) {
+    <section class="panel empty-state">
+      <h2>No main assemblies yet</h2>
+      <p>Add a main assembly to start this project's design list.</p>
+    </section>
+  } @else {
+    <div class="register-scroll">
+      <table class="register-table">
+        <thead>
+          <tr class="register-title-row">
+            <th colspan="11">{{ project()?.projectName }} Project Design list</th>
+          </tr>
+          <tr>
+            <th scope="col">Main Assemblies</th>
+            <th scope="col">Sub assembly</th>
+            <th scope="col">Part number</th>
+            <th scope="col">Part name</th>
+            <th scope="col">Quantity</th>
+            <th scope="col">Description</th>
+            <th scope="col">Make</th>
+            <th scope="col">Created by</th>
+            <th scope="col">File path</th>
+            <th scope="col">Start date</th>
+            <th scope="col">Completed date</th>
+          </tr>
+        </thead>
+        @for (mainAssembly of mainAssemblies(); track mainAssembly.id) {
+          <tbody>
+            @if (rowsFor(mainAssembly.id).length > 0) {
+              @for (row of rowsFor(mainAssembly.id); track $index) {
+                <tr>
+                  @if (row.mainAssemblyFirst) {
+                    <th scope="rowgroup" class="main-assembly-cell"
+                      [attr.rowspan]="row.mainAssemblyRowSpan">
+                      <strong>{{ mainAssembly.assemblyNumber }} {{ mainAssembly.name }}</strong>
+                      @if (permissions().canCreateAssembly) {
+                        <button class="table-action" type="button"
+                          (click)="startSubAssembly(mainAssembly.id)">Add subassembly</button>
+                      }
+                      @if (permissions().canCreatePart) {
+                        <button class="table-action" type="button"
+                          (click)="startPart(mainAssembly.id)">Add part</button>
+                      }
+                    </th>
+                  }
+                  @if (row.subAssemblyFirst) {
+                    <td class="subassembly-cell" [attr.rowspan]="row.subAssemblyRowSpan">
+                      @if (row.subAssembly) {
+                        <strong>{{ row.subAssembly.assemblyNumber }} {{ row.subAssembly.name }}</strong>
+                        @if (permissions().canCreatePart) {
+                          <button class="table-action" type="button"
+                            (click)="startPart(mainAssembly.id, row.subAssembly.id)">Add part</button>
+                        }
+                      } @else {
+                        <span class="muted-value">—</span>
+                      }
+                    </td>
+                  }
+                  @if (row.part) {
+                    <td>{{ row.part.partNumber }}</td>
+                    <td>{{ row.part.partName }}</td>
+                    <td>{{ row.part.quantity }}</td>
+                    <td>{{ row.part.description || '—' }}</td>
+                    <td>{{ row.part.make || '—' }}</td>
+                    <td>{{ row.part.createdBy }}</td>
+                    <td class="file-path">{{ row.part.filePath || '—' }}</td>
+                    <td>{{ row.part.startDate || '—' }}</td>
+                    <td>{{ row.part.completedDate || '—' }}</td>
+                  } @else {
+                    <td colspan="9" class="empty-register-cell">
+                      @if (permissions().canReadParts) {
+                        No parts have been added to this assembly yet.
+                      } @else {
+                        Parts are hidden because your role does not have permission to view them.
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            }
+          </tbody>
+        }
+      </table>
+    </div>
+  }
+</section>

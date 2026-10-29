@@ -1,0 +1,43 @@
+<section class="design-dashboard">
+  <nav class="breadcrumbs" aria-label="Breadcrumb"><a routerLink="/">Workspace</a><span>/</span><span>Design</span></nav>
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">DESIGN TEAM</p>
+      <h1>Design dashboard</h1>
+      <p>Choose a project to manage its main assemblies, subassemblies, and parts.</p>
+    </div>
+    <a class="secondary-button" routerLink="/projects">All projects</a>
+  </header>
+
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+  @if (loading()) {
+    <section class="empty-state" role="status">Loading projects…</section>
+  } @else if (projects().length === 0) {
+    <section class="empty-state"><h2>No projects available</h2><p>Create or get assigned to a project before starting design work.</p></section>
+  } @else {
+    <div class="project-grid">
+      @for (project of projects(); track project.id) {
+        <article class="project-card">
+          <div class="project-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16v4ZM13.5 6.5l4 4" /></svg>
+          </div>
+          <p class="eyebrow">{{ project.projectNumber }}</p>
+          <h2>{{ project.projectName }}</h2>
+          <p class="customer">{{ project.customerName }}</p>
+          @if (project.projectDescription) { <p class="description">{{ project.projectDescription }}</p> }
+          <a class="primary-button" [routerLink]="['/projects', project.id, 'design-part']">
+            Open design
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg>
+          </a>
+        </article>
+      }
+    </div>
+    @if (totalPages() > 1) {
+      <nav class="pagination" aria-label="Project pages">
+        <button type="button" class="secondary-button" [disabled]="page() === 0" (click)="changePage(page() - 1)">Previous</button>
+        <span>Page {{ page() + 1 }} of {{ totalPages() }}</span>
+        <button type="button" class="secondary-button" [disabled]="page() + 1 >= totalPages()" (click)="changePage(page() + 1)">Next</button>
+      </nav>
+    }
+  }
+</section>

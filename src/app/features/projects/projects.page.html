@@ -1,0 +1,144 @@
+<section class="projects-page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">WORKSPACE</p>
+      <h2>Projects</h2>
+      <p class="description">Create and manage projects across your customer portfolio.</p>
+    </div>
+    @if (canCreateProjects()) {
+      <button class="primary-button" type="button" (click)="startCreate()">Create project</button>
+    }
+  </header>
+
+  @if (error()) {
+    <p class="notice error" role="alert">{{ error() }}</p>
+  }
+  @if (message()) {
+    <p class="notice success" role="status">{{ message() }}</p>
+  }
+
+  @if (formOpen()) {
+    <section class="panel editor" aria-labelledby="project-form-title">
+      <h3 id="project-form-title">{{ editingId() === null ? 'Create project' : 'Edit project' }}</h3>
+      <form #projectForm="ngForm" (ngSubmit)="save(projectForm)">
+        <div class="form-grid">
+          <label>Project number
+            <input name="projectNumber" [(ngModel)]="draft.projectNumber" required maxlength="30" />
+          </label>
+          <label>Project name
+            <input name="projectName" [(ngModel)]="draft.projectName" required maxlength="30" />
+          </label>
+          <label>Customer name
+            <input name="customerName" [(ngModel)]="draft.customerName" required maxlength="30" />
+          </label>
+          <label>Customer address
+            <input name="customerAddress" [(ngModel)]="draft.customerAddress" maxlength="100" />
+          </label>
+          <label>Target start date
+            <input type="date" name="targetStartDate" [(ngModel)]="draft.targetStartDate" />
+          </label>
+          <label>Target end date
+            <input type="date" name="targetEndDate" [(ngModel)]="draft.targetEndDate"
+              [min]="draft.targetStartDate || null" />
+          </label>
+          <label class="full-width">Description
+            <textarea name="projectDescription" [(ngModel)]="draft.projectDescription"
+              maxlength="2000" rows="3"></textarea>
+          </label>
+        </div>
+        @if (draft.targetStartDate && draft.targetEndDate && draft.targetEndDate < draft.targetStartDate) {
+          <p class="field-error" role="alert">Target end date must not be before the target start date.</p>
+        }
+        <div class="form-actions">
+          <button class="primary-button" type="submit"
+            [disabled]="projectForm.invalid || saving() || (!!draft.targetStartDate && !!draft.targetEndDate && draft.targetEndDate < draft.targetStartDate)">
+            {{ saving() ? 'Saving…' : 'Save project' }}
+          </button>
+          <button class="secondary-button" type="button" [disabled]="saving()" (click)="cancelForm()">Cancel</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <form class="panel filters" (ngSubmit)="search()">
+    <label>Project number
+      <input name="projectNumberFilter" [(ngModel)]="projectNumberFilter" />
+    </label>
+    <label>Project name
+      <input name="projectNameFilter" [(ngModel)]="projectNameFilter" />
+    </label>
+    <label>Customer
+      <input name="customerNameFilter" [(ngModel)]="customerNameFilter" />
+    </label>
+    <button class="secondary-button" type="submit" [disabled]="loading()">Search</button>
+  </form>
+
+  <section class="panel project-list" aria-label="Project list">
+    <div class="list-heading">
+      <h3>All projects</h3>
+      <span>{{ totalElements() }} {{ totalElements() === 1 ? 'project' : 'projects' }}</span>
+    </div>
+
+    @if (loading()) {
+      <p class="list-status" role="status">Loading projects…</p>
+    } @else if (projects().length === 0) {
+      <p class="list-status">No projects found. Try changing the search filters.</p>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Customer</th>
+              <th>Target dates</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (project of projects(); track project.id) {
+              <tr>
+                <td>
+                  <strong>{{ project.projectName }}</strong>
+                  <span class="secondary-text">{{ project.projectNumber }}</span>
+                  @if (project.projectDescription) {
+                    <span class="description-text">{{ project.projectDescription }}</span>
+                  }
+                </td>
+                <td>
+                  <strong>{{ project.customerName }}</strong>
+                  @if (project.customerAddress) {
+                    <span class="secondary-text">{{ project.customerAddress }}</span>
+                  }
+                </td>
+                <td>
+                  <span>{{ project.targetStartDate ? (project.targetStartDate | date: 'mediumDate') : 'Not set' }}</span>
+                  <span class="secondary-text">{{ project.targetEndDate ? (project.targetEndDate | date: 'mediumDate') : 'No end date' }}</span>
+                </td>
+                <td class="actions">
+                  <button class="text-button" type="button" (click)="startEdit(project)">Edit</button>
+                  @if (deleteConfirmationId() === project.id) {
+                    <span class="confirm-text">Delete?</span>
+                    <button class="danger-button" type="button" (click)="deleteProject(project)">Confirm</button>
+                    <button class="text-button" type="button" (click)="cancelDelete()">Cancel</button>
+                  } @else {
+                    <button class="danger-button" type="button" (click)="deleteProject(project)">Delete</button>
+                  }
+                  <a class="text-button" [routerLink]="['/projects', project.id, 'assignments']">Team</a>
+                  <a class="text-button" [routerLink]="['/projects', project.id, 'design-part']">Design Part</a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <footer class="pagination">
+      <button class="secondary-button" type="button" (click)="changePage(page() - 1)"
+        [disabled]="loading() || page() === 0">Previous</button>
+      <span>Page {{ page() + 1 }} of {{ totalPages() || 1 }}</span>
+      <button class="secondary-button" type="button" (click)="changePage(page() + 1)"
+        [disabled]="loading() || page() + 1 >= totalPages()">Next</button>
+    </footer>
+  </section>
+</section>

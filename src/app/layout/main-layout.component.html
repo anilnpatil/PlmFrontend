@@ -1,0 +1,164 @@
+<div class="app-shell" [class.sidebar-collapsed]="sidebarCollapsed()" [class.mobile-menu-open]="mobileMenuOpen()">
+  <aside class="sidebar" aria-label="Main navigation">
+    <div class="sidebar-brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none">
+          <path d="M7 22.5 14.5 7l4.1 8.4 3-5.1L27 22.5H7Z" />
+          <path d="M12 22.5 16.1 14l4.1 8.5" />
+        </svg>
+      </div>
+      <div class="brand-copy">
+        <span>NextFirst</span>
+        <small>PROJECT LIFECYCLE</small>
+      </div>
+      <button class="icon-button mobile-close" type="button" aria-label="Close navigation"
+        (click)="closeMobileMenu()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+      </button>
+    </div>
+
+    <div class="workspace-picker">
+      <span class="workspace-avatar">N</span>
+      <span class="workspace-copy"><strong>Northstar Studio</strong><small>Business workspace</small></span>
+      <svg class="picker-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+    </div>
+
+    <nav class="navigation">
+      @if (auth.hasPermission('USERS_MANAGE')) {
+        <a class="nav-item" routerLink="/admin/users">User management</a>
+      }
+      @if (auth.hasPermission('ROLES_MANAGE')) {
+        <a class="nav-item" routerLink="/admin/roles">Roles and permissions</a>
+      }
+      @for (group of navigationGroups; track group.label) {
+        <div class="nav-group">
+          <p class="nav-group-label">{{ group.label }}</p>
+          @for (item of group.items; track item.label) {
+            @if (item.route) {
+              <a class="nav-item" [routerLink]="item.route"
+                [class.active]="activeTitle() === item.label"
+                [attr.aria-current]="activeTitle() === item.label ? 'page' : null"
+                [attr.title]="sidebarCollapsed() ? item.label : null" (click)="closeMobileMenu()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="item.icon" /></svg>
+                <span>{{ item.label }}</span>
+                @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
+              </a>
+            } @else {
+              <button class="nav-item" type="button" [class.active]="activeTitle() === item.label"
+                [attr.aria-current]="activeTitle() === item.label ? 'page' : null"
+                [attr.title]="sidebarCollapsed() ? item.label : null" (click)="navigateTo(item.label)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="item.icon" /></svg>
+                <span>{{ item.label }}</span>
+                @if (item.badge) {
+                  <span class="nav-badge">{{ item.badge }}</span>
+                }
+              </button>
+            }
+          }
+        </div>
+      }
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="help-link" type="button" (click)="navigateTo('Help center')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9a2.5 2.5 0 1 1 4.2 1.8c-1.1 1-1.8 1.3-1.8 2.7M12 17h.01" /></svg>
+        <span>Help center</span>
+      </button>
+      <div class="sidebar-user">
+        <span class="user-avatar">AN</span>
+        <span class="user-copy"><strong>{{ auth.user()?.fullName }}</strong><small>{{ auth.user()?.email }}</small></span>
+      </div>
+      <button class="sidebar-logout-button" type="button" title="Sign out" (click)="logout()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg>
+        <span>Sign out</span>
+      </button>
+    </div>
+  </aside>
+
+  @if (mobileMenuOpen()) {
+    <button class="mobile-scrim" type="button" aria-label="Close navigation menu" (click)="closeMobileMenu()"></button>
+  }
+
+  <div class="workspace-shell">
+    <header class="topbar">
+      <div class="topbar-start">
+        <button class="icon-button menu-toggle" type="button" aria-label="Toggle navigation"
+          [attr.aria-expanded]="mobileMenuOpen() || !sidebarCollapsed()" (click)="toggleNavigation()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+        <span class="breadcrumb-root">Workspace</span>
+        <svg class="breadcrumb-separator" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        <span class="breadcrumb-current">{{ activeTitle() }}</span>
+      </div>
+      <div class="topbar-actions">
+        <label class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg>
+          <input type="search" placeholder="Search workspace" aria-label="Search workspace" />
+          <kbd>⌘ K</kbd>
+        </label>
+        <span class="topbar-divider"></span>
+        <button class="icon-button notification-button" type="button" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+          <span class="notification-dot"></span>
+        </button>
+        <button class="topbar-avatar" type="button" aria-label="Open account menu">AN</button>
+      </div>
+    </header>
+
+    <main class="main-content" [class.design-workspace-content]="isDesignWorkspace()">
+      @if (showingFeature()) {
+        <router-outlet />
+      } @else {
+        <section class="page-heading">
+          <div>
+            <p class="eyebrow">YOUR WORKSPACE</p>
+            <h1>{{ activeTitle() }}</h1>
+            <p class="page-description">A clear view of the work moving your business forward.</p>
+          </div>
+          <span class="live-status"><span></span> All systems operational</span>
+        </section>
+
+        <section class="welcome-card" aria-labelledby="welcome-title">
+          <div class="welcome-content">
+            <span class="welcome-tag"><span></span> PROJECT LIFECYCLE MANAGEMENT</span>
+            <h2 id="welcome-title">Everything your team needs,<br />in one place.</h2>
+            <p>Your workspace is ready. Use the navigation to move between projects, tasks, documents, and more.</p>
+            <a class="primary-button" routerLink="/projects" (click)="closeMobileMenu()">
+              Explore projects
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg>
+            </a>
+          </div>
+          <div class="welcome-art" aria-hidden="true">
+            <div class="art-orbit orbit-one"></div>
+            <div class="art-orbit orbit-two"></div>
+            <div class="art-card">
+              <div class="art-card-top"><span></span><span></span><span></span></div>
+              <div class="art-card-body">
+                <div class="art-chart"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="art-lines"><i></i><i></i><i></i></div>
+              </div>
+            </div>
+            <span class="art-sparkle sparkle-one">✦</span>
+            <span class="art-sparkle sparkle-two">✧</span>
+          </div>
+        </section>
+
+        <section class="next-step-card" aria-label="Workspace navigation tip">
+          <div class="next-step-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18" /></svg>
+          </div>
+          <div>
+            <h2>Make this workspace yours</h2>
+            <p>Select a section from the sidebar to get started. Your project tools will live here as they are added.</p>
+          </div>
+          <svg class="next-step-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg>
+        </section>
+      }
+    </main>
+
+    <footer class="app-footer">
+      <span>© 2026 NextFirst <span class="footer-separator">·</span> Project Lifecycle Management</span>
+      <span class="footer-version">Built for better work</span>
+    </footer>
+  </div>
+</div>

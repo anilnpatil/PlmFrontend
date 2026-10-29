@@ -1,0 +1,19 @@
+<section class="module-dashboard">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Workspace</a><span>/</span><span>{{ moduleName }}</span>
+  </nav>
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">PROJECT LIFECYCLE</p>
+      <h1>{{ moduleName }} dashboard</h1>
+      <p>This workspace is reserved for {{ moduleName }} records and their lifecycle.</p>
+    </div>
+  </header>
+  <section class="empty-state" aria-labelledby="setup-title">
+    <div class="module-icon" aria-hidden="true">{{ moduleName.slice(0, 1) }}</div>
+    <div>
+      <h2 id="setup-title">{{ moduleName }} workspace is not configured yet</h2>
+      <p>No records or add, edit, or delete actions are shown until this module has an agreed data model and backend API.</p>
+    </div>
+  </section>
+</section>
