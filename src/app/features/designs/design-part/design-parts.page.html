@@ -22,6 +22,57 @@
 
   @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
   @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }
+  @if (fileBrowserOpen()) {
+    <div class="file-browser-backdrop">
+      <section class="file-browser panel" role="dialog" aria-modal="true" aria-labelledby="file-browser-title">
+        <header class="file-browser-header">
+          <div>
+            <p class="eyebrow">APPLICATION SERVER</p>
+            <h2 id="file-browser-title">Choose a design file</h2>
+          </div>
+          <button class="secondary-button" type="button" (click)="closeFileBrowser()">Close</button>
+        </header>
+        @if (fileBrowser(); as browser) {
+          @if (browser.roots.length > 0) {
+            <label class="file-browser-root">Browse in project folder
+              <select [value]="browser.selectedRootId" (change)="changeServerRoot($event)">
+                @for (root of browser.roots; track root.id) {
+                  <option [value]="root.id">{{ root.path }}</option>
+                }
+              </select>
+            </label>
+          }
+          <div class="file-browser-location">
+            <button class="secondary-button" type="button"
+              [disabled]="browser.parentDirectory === null || fileBrowserLoading()"
+              (click)="goToParentFolder()">Up one folder</button>
+            <span>{{ selectedRootPath() }}{{ browser.currentDirectory ? '\\' + browser.currentDirectory : '' }}</span>
+          </div>
+        }
+        @if (fileBrowserError()) { <p class="notice error" role="alert">{{ fileBrowserError() }}</p> }
+        @if (fileBrowserLoading()) {
+          <p class="file-browser-status" role="status">Loading server files…</p>
+        } @else if (fileBrowser(); as browser) {
+          <div class="file-browser-list">
+            @for (entry of browser.entries; track entry.relativePath) {
+              @if (entry.directory) {
+                <button class="file-browser-entry folder-entry" type="button"
+                  (click)="openServerFolder(entry.relativePath)">
+                  <span class="file-entry-kind">Folder</span><span>{{ entry.name }}</span>
+                </button>
+              } @else {
+                <button class="file-browser-entry" type="button" (click)="selectServerFile(entry)">
+                  <span class="file-entry-kind">File</span><span>{{ entry.name }}</span>
+                </button>
+              }
+            } @empty {
+              <p class="file-browser-status">This folder contains no accessible files or folders.</p>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  }
 
   @if (editor() === 'main-assembly' || editor() === 'sub-assembly') {
     <section class="panel editor" aria-labelledby="assembly-form-title">
@@ -88,12 +139,30 @@
           <label>Make
             <input name="make" [(ngModel)]="partDraft.make" maxlength="100" />
           </label>
+          <label>Mode of purchase
+            <select name="modeOfPurchase" [(ngModel)]="partDraft.modeOfPurchase" required>
+              @for (mode of purchaseModes; track mode.value) {
+                <option [ngValue]="mode.value">{{ mode.label }}</option>
+              }
+            </select>
+          </label>
+          <label>Part status
+            <select name="partStatus" [(ngModel)]="partDraft.partStatus" required>
+              @for (status of partStatuses; track status.value) {
+                <option [ngValue]="status.value">{{ status.label }}</option>
+              }
+            </select>
+          </label>
           <label class="full-width">Description
             <textarea name="description" [(ngModel)]="partDraft.description" maxlength="2000" rows="2"></textarea>
           </label>
-          <label class="full-width">File path
-            <input name="filePath" [(ngModel)]="partDraft.filePath" maxlength="2048"
-              placeholder="Enter a file path; no file will be uploaded" autocomplete="off" />
+          <label class="full-width">Selected file name / path
+            <div class="path-input-row">
+              <input name="filePath" [(ngModel)]="partDraft.filePath" maxlength="2048"
+                placeholder="Browse the server or enter a path" autocomplete="off" />
+              <button class="secondary-button" type="button" (click)="browseFilesFromForm()">Browse server</button>
+            </div>
+            <small class="field-help">Choose a file from the server folder to fill its complete path and part details automatically.</small>
           </label>
           <label>Start date
             <input type="date" name="startDate" [(ngModel)]="partDraft.startDate" />
@@ -124,7 +193,7 @@
       <table class="register-table">
         <thead>
           <tr class="register-title-row">
-            <th colspan="11">{{ project()?.projectName }} Project Design list</th>
+            <th colspan="13">{{ project()?.projectName }} Project Design list</th>
           </tr>
           <tr>
             <th scope="col">Main Assemblies</th>
@@ -134,6 +203,8 @@
             <th scope="col">Quantity</th>
             <th scope="col">Description</th>
             <th scope="col">Make</th>
+            <th scope="col">Mode of purchase</th>
+            <th scope="col">Part status</th>
             <th scope="col">Created by</th>
             <th scope="col">File path</th>
             <th scope="col">Start date</th>
@@ -144,7 +215,10 @@
           <tbody>
             @if (rowsFor(mainAssembly.id).length > 0) {
               @for (row of rowsFor(mainAssembly.id); track $index) {
-                <tr>
+                <tr
+                  [class.subassembly-part-row]="row.subAssembly !== null"
+                  [class.direct-part-row]="row.subAssembly === null && row.part !== null"
+                  [class.empty-assembly-row]="row.part === null">
                   @if (row.mainAssemblyFirst) {
                     <th scope="rowgroup" class="main-assembly-cell"
                       [attr.rowspan]="row.mainAssemblyRowSpan">
@@ -156,6 +230,8 @@
                       @if (permissions().canCreatePart) {
                         <button class="table-action" type="button"
                           (click)="startPart(mainAssembly.id)">Add part</button>
+                        <button class="table-action" type="button"
+                          (click)="selectPathToAddPart(mainAssembly.id)">Browse server files</button>
                       }
                     </th>
                   }
@@ -166,6 +242,8 @@
                         @if (permissions().canCreatePart) {
                           <button class="table-action" type="button"
                             (click)="startPart(mainAssembly.id, row.subAssembly.id)">Add part</button>
+                          <button class="table-action" type="button"
+                            (click)="selectPathToAddPart(mainAssembly.id, row.subAssembly.id)">Browse server files</button>
                         }
                       } @else {
                         <span class="muted-value">—</span>
@@ -173,17 +251,51 @@
                     </td>
                   }
                   @if (row.part) {
-                    <td>{{ row.part.partNumber }}</td>
-                    <td>{{ row.part.partName }}</td>
-                    <td>{{ row.part.quantity }}</td>
+                    <td class="part-number-cell">{{ row.part.partNumber }}</td>
+                    <td class="part-name-cell">{{ row.part.partName }}</td>
+                    <td class="quantity-cell">{{ row.part.quantity }}</td>
                     <td>{{ row.part.description || '—' }}</td>
                     <td>{{ row.part.make || '—' }}</td>
+                    <td>{{ purchaseModeLabel(row.part.modeOfPurchase) }}</td>
+                    <td class="status-cell">
+                      @if (permissions().canUpdateParts) {
+                        <select class="part-status status-select"
+                          [class.status-not-started]="row.part.partStatus === 'NOT_STARTED'"
+                          [class.status-in-progress]="row.part.partStatus === 'IN_PROGRESS'"
+                          [class.status-ready]="row.part.partStatus === 'READY_TO_PURCHASE'"
+                          [value]="row.part.partStatus"
+                          [disabled]="updatingPartStatuses().has(row.part.id)"
+                          [attr.aria-label]="'Update status for ' + row.part.partNumber"
+                          (change)="updatePartStatus(row.part, $event)">
+                          @for (status of partStatuses; track status.value) {
+                            <option [value]="status.value">{{ status.label }}</option>
+                          }
+                        </select>
+                      } @else {
+                      <span class="part-status"
+                        [class.status-not-started]="row.part.partStatus === 'NOT_STARTED'"
+                        [class.status-in-progress]="row.part.partStatus === 'IN_PROGRESS'"
+                        [class.status-ready]="row.part.partStatus === 'READY_TO_PURCHASE'">
+                        {{ partStatusLabel(row.part.partStatus) }}
+                      </span>
+                      }
+                    </td>
                     <td>{{ row.part.createdBy }}</td>
-                    <td class="file-path">{{ row.part.filePath || '—' }}</td>
+                    <td class="file-path">
+                      @if (row.part.filePath) {
+                        <span>{{ row.part.filePath }}</span>
+                        <div class="file-actions">
+                          <button class="table-action" type="button" (click)="openPartFile(row.part!)">Open</button>
+                          <button class="table-action" type="button" (click)="downloadPartFile(row.part!)">Download</button>
+                        </div>
+                      } @else {
+                        —
+                      }
+                    </td>
                     <td>{{ row.part.startDate || '—' }}</td>
                     <td>{{ row.part.completedDate || '—' }}</td>
                   } @else {
-                    <td colspan="9" class="empty-register-cell">
+                    <td colspan="11" class="empty-register-cell">
                       @if (permissions().canReadParts) {
                         No parts have been added to this assembly yet.
                       } @else {

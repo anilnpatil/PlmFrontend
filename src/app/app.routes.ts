@@ -8,6 +8,7 @@ import { ProjectAssignmentsPage } from './features/projects/assignments/project-
 import { ProjectsPage } from './features/projects/projects.page';
 import { DesignPartsPage } from './features/designs/design-part/design-parts.page';
 import { DesignProjectsDashboardPage } from './features/designs/design-dashboard/design-dashboard.page';
+import { DesignFileRootsPage } from './features/designs/file-roots/design-file-roots.page';
 import { ModuleDashboardPage } from './features/modules/module-dashboard.page';
 import { MainLayoutComponent } from './layout/main-layout.component';
 
@@ -33,6 +34,7 @@ export const routes: Routes = [
     children: [
       { path: 'projects/:projectId/assignments', component: ProjectAssignmentsPage },
       { path: 'projects/:projectId/design-part', component: DesignPartsPage },
+      { path: 'design-file-roots', component: DesignFileRootsPage },
       { path: 'designs', component: DesignProjectsDashboardPage },
       { path: 'projects', component: ProjectsPage },
       { path: 'features/electrical', component: ModuleDashboardPage, data: { moduleName: 'Electrical' } },

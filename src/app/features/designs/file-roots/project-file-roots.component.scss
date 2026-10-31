@@ -1,0 +1,36 @@
+.folder-manager { padding-top: 12px; border-top: 1px solid #e8edf3; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+h3 { margin: 0; color: #344158; font-size: 13px; }
+header span, .empty-folders { color: #64728a; font-size: 11px; }
+.folder-form { display: flex; gap: 8px; margin: 10px 0; }
+.folder-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #cbd3e0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+}
+.folder-form button, .remove-button {
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #334155;
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.folder-form button:disabled, .remove-button:disabled { opacity: .55; cursor: not-allowed; }
+.folder-list { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.folder-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px; border: 1px solid #e1e6ee; border-radius: 6px; }
+.folder-list li > span { display: grid; min-width: 0; gap: 3px; }
+.folder-list strong { color: #344158; font-size: 11px; }
+.folder-list small { overflow-wrap: anywhere; color: #64728a; font-size: 10px; }
+.empty-folders { margin: 10px 0 0; }
+.folder-notice { margin: 8px 0; padding: 7px; border-radius: 5px; font-size: 11px; }
+.folder-notice.error { color: #a52d39; background: #fff0f1; }
+.folder-notice.success { color: #197048; background: #eaf7f0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+@media (max-width: 620px) { .folder-form { flex-direction: column; } }

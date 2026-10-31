@@ -11,6 +11,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const router = inject(Router);
   const token = auth.token();
   const isApiRequest = request.url.startsWith(`${environment.apiBaseUrl}/api/`);
+  const isHandledDesignAccessRequest = /\/api\/projects\/\d+\/designs\/(?:file-roots(?:\/\d+)?|file-browser(?:\?|$)|parts\/\d+\/file(?:\/download)?(?:\?|$))/.test(request.url);
   const authorizedRequest = token && isApiRequest
     ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
     : request;
@@ -20,7 +21,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       if (
         error instanceof HttpErrorResponse &&
         (error.status === 401 || error.status === 403) &&
-        token
+        token &&
+        !(error.status === 403 && isHandledDesignAccessRequest)
       ) {
         if (error.status === 401) {
           auth.clearSession();

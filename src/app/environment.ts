@@ -1,3 +1,3 @@
 export const environment = {
-  apiBaseUrl: 'http://localhost:8080',
+  apiBaseUrl: `${window.location.protocol}//${window.location.hostname}:8080`,
 };

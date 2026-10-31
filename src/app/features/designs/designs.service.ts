@@ -8,6 +8,7 @@ export interface DesignPermissions {
   canCreateAssembly: boolean;
   canCreatePart: boolean;
   canReadParts: boolean;
+  canUpdateParts: boolean;
 }
 
 export interface DesignPart {
@@ -19,12 +20,17 @@ export interface DesignPart {
   quantity: number;
   description: string | null;
   make: string | null;
+  modeOfPurchase: ModeOfPurchase;
+  partStatus: PartStatus;
   createdBy: string;
   filePath: string | null;
   startDate: string | null;
   completedDate: string | null;
   createdAt: string;
 }
+
+export type ModeOfPurchase = 'PURCHASE' | 'MANUFACTURE' | 'STOCK';
+export type PartStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'READY_TO_PURCHASE';
 
 export interface DesignSubAssembly {
   id: number;
@@ -54,6 +60,38 @@ export interface DesignWorkspace {
   permissions: DesignPermissions;
 }
 
+export interface DesignFileBrowserEntry {
+  name: string;
+  relativePath: string;
+  directory: boolean;
+  fullPath: string | null;
+}
+
+export interface DesignFileBrowserRoot {
+  id: number;
+  name: string;
+  path: string;
+}
+
+export interface DesignFileRoot {
+  id: number;
+  name: string;
+  path: string;
+}
+
+export interface DesignFileRootsResponse {
+  roots: DesignFileRoot[];
+  canManage: boolean;
+}
+
+export interface DesignFileBrowserResponse {
+  roots: DesignFileBrowserRoot[];
+  selectedRootId: number;
+  currentDirectory: string;
+  parentDirectory: string | null;
+  entries: DesignFileBrowserEntry[];
+}
+
 export interface AssemblyRequest {
   assemblyNumber: string;
   name: string;
@@ -68,6 +106,8 @@ export interface DesignPartRequest {
   quantity: number;
   description: string;
   make: string;
+  modeOfPurchase: ModeOfPurchase;
+  partStatus: PartStatus;
   filePath: string;
   startDate: string | null;
   completedDate: string | null;
@@ -101,6 +141,42 @@ export class DesignsService {
 
   createPart(projectId: number, request: DesignPartRequest): Observable<DesignPart> {
     return this.http.post<DesignPart>(`${this.projectUrl(projectId)}/parts`, request);
+  }
+
+  updatePartStatus(projectId: number, partId: number, partStatus: PartStatus): Observable<DesignPart> {
+    return this.http.patch<DesignPart>(
+      `${this.projectUrl(projectId)}/parts/${partId}/status`,
+      { partStatus },
+    );
+  }
+
+  partFile(projectId: number, partId: number, download: boolean): Observable<Blob> {
+    const action = download ? '/download' : '';
+    return this.http.get(`${this.projectUrl(projectId)}/parts/${partId}/file${action}`, {
+      responseType: 'blob',
+    });
+  }
+
+  browseServerFiles(
+    projectId: number,
+    rootId: number,
+    path: string,
+  ): Observable<DesignFileBrowserResponse> {
+    return this.http.get<DesignFileBrowserResponse>(`${this.projectUrl(projectId)}/file-browser`, {
+      params: { rootId, path },
+    });
+  }
+
+  fileRoots(projectId: number): Observable<DesignFileRootsResponse> {
+    return this.http.get<DesignFileRootsResponse>(`${this.projectUrl(projectId)}/file-roots`);
+  }
+
+  addFileRoot(projectId: number, path: string): Observable<DesignFileRoot> {
+    return this.http.post<DesignFileRoot>(`${this.projectUrl(projectId)}/file-roots`, { path });
+  }
+
+  removeFileRoot(projectId: number, rootId: number): Observable<void> {
+    return this.http.delete<void>(`${this.projectUrl(projectId)}/file-roots/${rootId}`);
   }
 
   private projectUrl(projectId: number): string {

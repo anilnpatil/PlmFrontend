@@ -1,0 +1,66 @@
+<section class="file-roots-page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a routerLink="/designs">Design</a><span>/</span><span>Project folders</span>
+  </nav>
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">DESIGN WORKSPACE</p>
+      <h1>Project server folders</h1>
+      <p>Manage the server folders available in each project's design file picker.</p>
+    </div>
+  </header>
+
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+
+  <form class="filters panel" (ngSubmit)="search()">
+    <label>Project number
+      <input name="projectNumber" [(ngModel)]="projectNumberFilter" />
+    </label>
+    <label>Project name
+      <input name="projectName" [(ngModel)]="projectNameFilter" />
+    </label>
+    <label>Customer
+      <input name="customerName" [(ngModel)]="customerNameFilter" />
+    </label>
+    <button class="secondary-button" type="submit" [disabled]="loading()">Search</button>
+  </form>
+
+  <div class="list-heading">
+    <h2>Projects</h2>
+    <span>{{ totalElements() }} total</span>
+  </div>
+  @if (loading()) {
+    <section class="panel status" role="status">Loading projects and folders…</section>
+  } @else if (projects().length === 0) {
+    <section class="panel status">No projects found for these filters.</section>
+  } @else {
+    <div class="project-list">
+      @for (item of projects(); track item.project.id) {
+        <article class="project-card panel">
+          <header class="project-heading">
+            <div>
+              <p class="project-number">{{ item.project.projectNumber }}</p>
+              <h2>{{ item.project.projectName }}</h2>
+              <p class="customer">{{ item.project.customerName }}</p>
+            </div>
+            <a class="open-design" [routerLink]="['/projects', item.project.id, 'design-part']">Open design</a>
+          </header>
+          @if (item.canAccessDesign) {
+            <app-project-file-roots [projectId]="item.project.id" [roots]="item.roots"
+              [canManage]="item.canManage"
+              (rootsChange)="updateRoots(item.project.id, $event)" />
+          } @else {
+            <p class="no-access">You do not have design file access for this project.</p>
+          }
+        </article>
+      }
+    </div>
+    <nav class="pagination" aria-label="Project pages">
+      <button class="secondary-button" type="button" [disabled]="page() === 0 || loading()"
+        (click)="changePage(page() - 1)">Previous</button>
+      <span>Page {{ page() + 1 }} of {{ totalPages() }}</span>
+      <button class="secondary-button" type="button" [disabled]="page() + 1 >= totalPages() || loading()"
+        (click)="changePage(page() + 1)">Next</button>
+    </nav>
+  }
+</section>

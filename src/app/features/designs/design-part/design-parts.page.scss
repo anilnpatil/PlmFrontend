@@ -59,6 +59,9 @@ input, textarea, select {
 }
 .full-width { grid-column: 1 / -1; }
 .form-actions { display: flex; gap: 8px; margin-top: 13px; }
+.field-help { color: #64728a; font-size: 11px; font-weight: 400; line-height: 1.4; }
+.path-input-row { display: flex; gap: 8px; }
+.path-input-row .secondary-button { flex: 0 0 auto; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 .notice { margin: 12px 0; padding: 11px 13px; border-radius: 8px; }
 .notice.error { color: #a52d39; background: #fff0f1; }
@@ -69,46 +72,72 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .register-scroll {
   width: 100%;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid #cbd5e1;
   background: #fff;
 }
 .register-table {
   width: 100%;
-  min-width: 1200px;
+  min-width: 1450px;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 12px;
 }
 .register-table th, .register-table td {
-  padding: 7px 8px;
-  border: 1px solid #b9c5d3;
+  padding: 9px 10px;
+  border: 1px solid #d5dde7;
   text-align: center;
   vertical-align: middle;
 }
-.register-table thead th { background: #f3f6fa; font-weight: 600; }
+.register-table thead tr:last-child th {
+  color: #344158;
+  background: #f3f6fa;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .register-table .register-title-row th {
-  padding: 7px;
+  padding: 11px;
   color: #172554;
   background: #e6fbfb;
   font-size: 16px;
   font-weight: 500;
 }
-.register-table tbody + tbody tr:first-child > * { border-top-width: 3px; }
+.register-table tbody + tbody tr:first-child > * { border-top: 3px solid #9aa9bd; }
+.register-table tbody tr.subassembly-part-row > td { background: #f5f9fd; }
+.register-table tbody tr.subassembly-part-row:nth-child(even) > td { background: #edf4fa; }
+.register-table tbody tr.direct-part-row > td { background: #fffaf4; }
 .main-assembly-cell {
   width: 145px;
   min-width: 145px;
-  background: #f7e5d1;
+  border-left: 4px solid #c27a37 !important;
+  background: #fff0df;
   text-align: left !important;
 }
 .subassembly-cell {
   width: 145px;
   min-width: 145px;
-  background: #d7e8f4;
+  border-left: 4px solid #5784ac !important;
+  background: #e5f1fb;
   text-align: left !important;
 }
-.main-assembly-cell strong, .subassembly-cell strong { display: block; }
-.table-action {
+.main-assembly-cell strong, .subassembly-cell strong {
   display: block;
+  color: #26364d;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.part-number-cell {
+  color: #344158;
+  font-family: Consolas, 'Courier New', monospace;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.part-name-cell { color: #24324a; font-weight: 600; text-align: left !important; }
+.quantity-cell { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-action {
+  display: inline-flex;
   margin-top: 6px;
+  margin-right: 4px;
   padding: 3px 6px;
   border: 1px solid #cbd5e1;
   border-radius: 4px;
@@ -118,12 +147,30 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   font-size: 10px;
   cursor: pointer;
 }
-.register-table td:nth-child(3) { min-width: 90px; }
 .register-table td:nth-child(4) { min-width: 110px; }
-.register-table td:nth-child(6) { min-width: 150px; }
 .register-table .file-path { min-width: 210px; overflow-wrap: anywhere; text-align: left; }
 .empty-register-cell { padding: 22px !important; color: #64728a; text-align: left !important; }
 .muted-value { color: #64728a; }
+.part-status {
+  display: inline-flex;
+  min-width: 112px;
+  justify-content: center;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.status-select {
+  min-width: 142px;
+  padding: 5px 24px 5px 9px;
+  cursor: pointer;
+}
+.status-select:disabled { cursor: wait; opacity: .7; }
+.status-not-started { color: #475569; border-color: #cbd5e1; background: #f1f5f9; }
+.status-in-progress { color: #854d0e; border-color: #facc15; background: #fef9c3; }
+.status-ready { color: #166534; border-color: #86efac; background: #dcfce7; }
 @media (max-width: 700px) {
   .workspace-header { align-items: flex-start; flex-direction: column; }
   .form-grid { grid-template-columns: 1fr; }

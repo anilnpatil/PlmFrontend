@@ -10,7 +10,12 @@ import {
   DesignMainAssembly,
   DesignPart,
   DesignPartRequest,
+  DesignFileBrowserEntry,
+  DesignFileBrowserResponse,
+  DesignFileRoot,
   DesignPermissions,
+  ModeOfPurchase,
+  PartStatus,
   DesignSubAssembly,
   DesignsService,
 } from '../designs.service';
@@ -32,6 +37,8 @@ interface PartDraft {
   quantity: number;
   description: string;
   make: string;
+  modeOfPurchase: ModeOfPurchase;
+  partStatus: PartStatus;
   filePath: string;
   startDate: string;
   completedDate: string;
@@ -55,7 +62,19 @@ export class DesignPartsPage {
     canCreateAssembly: false,
     canCreatePart: false,
     canReadParts: false,
+    canUpdateParts: false,
   });
+  protected readonly fileRoots = signal<DesignFileRoot[]>([]);
+  protected readonly purchaseModes: Array<{ value: ModeOfPurchase; label: string }> = [
+    { value: 'PURCHASE', label: 'Purchase' },
+    { value: 'MANUFACTURE', label: 'Manufacture' },
+    { value: 'STOCK', label: 'Stock' },
+  ];
+  protected readonly partStatuses: Array<{ value: PartStatus; label: string }> = [
+    { value: 'NOT_STARTED', label: 'Not started' },
+    { value: 'IN_PROGRESS', label: 'In progress' },
+    { value: 'READY_TO_PURCHASE', label: 'Ready to purchase' },
+  ];
   protected readonly rowsByMainAssembly = computed(() => {
     const result = new Map<number, RegisterRow[]>();
     for (const mainAssembly of this.mainAssemblies()) {
@@ -65,11 +84,17 @@ export class DesignPartsPage {
   });
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  protected readonly updatingPartStatuses = signal<ReadonlySet<number>>(new Set());
   protected readonly editor = signal<Editor>(null);
   protected readonly selectedMainAssemblyId = signal<number | null>(null);
   protected readonly selectedSubAssemblyId = signal<number | null>(null);
   protected readonly error = signal('');
   protected readonly message = signal('');
+  protected readonly fileBrowserOpen = signal(false);
+  protected readonly fileBrowserLoading = signal(false);
+  protected readonly fileBrowser = signal<DesignFileBrowserResponse | null>(null);
+  protected readonly fileBrowserError = signal('');
+  private fileBrowserContext: { mainAssemblyId: number; subAssemblyId: number | null } | null = null;
   protected assemblyDraft: AssemblyRequest = this.emptyAssemblyDraft();
   protected partDraft: PartDraft = this.emptyPartDraft();
 
@@ -101,6 +126,84 @@ export class DesignPartsPage {
     this.partDraft = this.emptyPartDraft();
     this.editor.set('part');
     this.clearNotices();
+  }
+
+  protected selectPathToAddPart(mainAssemblyId: number, subAssemblyId: number | null = null): void {
+    if (this.fileRoots().length === 0) {
+      this.error.set('Register a project folder on the Design folders page before browsing for a design file.');
+      return;
+    }
+    this.fileBrowserContext = { mainAssemblyId, subAssemblyId };
+    this.clearNotices();
+    this.fileBrowserOpen.set(true);
+    this.loadServerFolder(this.fileRoots()[0].id, '');
+  }
+
+  protected browseFilesFromForm(): void {
+    const mainAssemblyId = this.selectedMainAssemblyId();
+    if (mainAssemblyId === null) {
+      this.error.set('Select a main assembly before browsing for a server file.');
+      return;
+    }
+    if (this.fileRoots().length === 0) {
+      this.error.set('Register a project folder on the Design folders page before browsing for a design file.');
+      return;
+    }
+    this.fileBrowserContext = {
+      mainAssemblyId,
+      subAssemblyId: this.selectedSubAssemblyId(),
+    };
+    this.fileBrowserOpen.set(true);
+    this.loadServerFolder(this.fileRoots()[0].id, '');
+  }
+
+  protected closeFileBrowser(): void {
+    this.fileBrowserOpen.set(false);
+    this.fileBrowserContext = null;
+    this.fileBrowserError.set('');
+  }
+
+  protected openServerFolder(path: string): void {
+    const browser = this.fileBrowser();
+    if (browser) {
+      this.loadServerFolder(browser.selectedRootId, path);
+    }
+  }
+
+  protected goToParentFolder(): void {
+    const browser = this.fileBrowser();
+    if (browser?.parentDirectory !== null && browser) {
+      this.loadServerFolder(browser.selectedRootId, browser.parentDirectory);
+    }
+  }
+
+  protected changeServerRoot(event: Event): void {
+    const value = Number((event.target as HTMLSelectElement).value);
+    if (Number.isSafeInteger(value) && value >= 0) {
+      this.loadServerFolder(value, '');
+    }
+  }
+
+  protected selectServerFile(entry: DesignFileBrowserEntry): void {
+    const context = this.fileBrowserContext;
+    if (!context || entry.directory || !entry.fullPath) {
+      return;
+    }
+    const fileName = entry.name;
+    const extensionIndex = fileName.lastIndexOf('.');
+    const baseName = extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName;
+    const matchedName = /^(\S+)\s+(.+)$/.exec(baseName.trim());
+    this.selectedMainAssemblyId.set(context.mainAssemblyId);
+    this.selectedSubAssemblyId.set(context.subAssemblyId);
+    this.partDraft = {
+      ...this.emptyPartDraft(),
+      partNumber: matchedName?.[1] ?? baseName.trim(),
+      partName: matchedName?.[2]?.trim() ?? '',
+      filePath: entry.fullPath,
+    };
+    this.editor.set('part');
+    this.closeFileBrowser();
+    this.message.set('Server file selected. Full path, part number, and part name were filled in; verify the details before saving.');
   }
 
   protected onMainAssemblyChange(id: number | null): void {
@@ -173,6 +276,8 @@ export class DesignPartsPage {
       partName: this.partDraft.partName.trim(),
       description: this.partDraft.description.trim(),
       make: this.partDraft.make.trim(),
+      modeOfPurchase: this.partDraft.modeOfPurchase,
+      partStatus: this.partDraft.partStatus,
       filePath: this.partDraft.filePath.trim(),
       startDate: this.partDraft.startDate || null,
       completedDate: this.partDraft.completedDate || null,
@@ -200,8 +305,117 @@ export class DesignPartsPage {
     return this.mainAssemblies().find((assembly) => assembly.id === this.selectedMainAssemblyId());
   }
 
+  protected purchaseModeLabel(value: ModeOfPurchase | null): string {
+    return this.purchaseModes.find((mode) => mode.value === value)?.label ?? '—';
+  }
+
+  protected partStatusLabel(value: PartStatus | null): string {
+    return this.partStatuses.find((status) => status.value === value)?.label ?? 'Not started';
+  }
+
+  protected updatePartStatus(part: DesignPart, event: Event): void {
+    if (!this.permissions().canUpdateParts || this.updatingPartStatuses().has(part.id)) {
+      return;
+    }
+    const nextStatus = (event.target as HTMLSelectElement).value as PartStatus;
+    if (!this.partStatuses.some((status) => status.value === nextStatus)) {
+      this.error.set('Select a valid part status.');
+      return;
+    }
+    this.error.set('');
+    this.message.set('');
+    this.updatingPartStatuses.update((ids) => new Set(ids).add(part.id));
+    this.designsService.updatePartStatus(this.projectId, part.id, nextStatus).subscribe({
+      next: (updatedPart) => {
+        this.mainAssemblies.update((assemblies) => assemblies.map((mainAssembly) => ({
+          ...mainAssembly,
+          parts: mainAssembly.parts.map((item) => item.id === updatedPart.id ? updatedPart : item),
+          subAssemblies: mainAssembly.subAssemblies.map((subAssembly) => ({
+            ...subAssembly,
+            parts: subAssembly.parts.map((item) => item.id === updatedPart.id ? updatedPart : item),
+          })),
+        })));
+        this.updatingPartStatuses.update((ids) => {
+          const next = new Set(ids);
+          next.delete(part.id);
+          return next;
+        });
+        this.message.set(`Status updated for ${updatedPart.partNumber}.`);
+      },
+      error: (error: unknown) => {
+        this.updatingPartStatuses.update((ids) => {
+          const next = new Set(ids);
+          next.delete(part.id);
+          return next;
+        });
+        this.error.set(this.describeError(error, `Unable to update status for ${part.partNumber}.`));
+        this.loadWorkspace();
+      },
+    });
+  }
+
   protected rowsFor(mainAssemblyId: number): RegisterRow[] {
     return this.rowsByMainAssembly().get(mainAssemblyId) ?? [];
+  }
+
+  protected selectedRootPath(): string {
+    const browser = this.fileBrowser();
+    return browser?.roots.find((root) => root.id === browser.selectedRootId)?.path ?? '';
+  }
+
+  private loadServerFolder(rootId: number, path: string): void {
+    this.fileBrowserLoading.set(true);
+    this.fileBrowserError.set('');
+    this.designsService.browseServerFiles(this.projectId, rootId, path).subscribe({
+      next: (browser) => {
+        this.fileBrowser.set(browser);
+        this.fileBrowserLoading.set(false);
+      },
+      error: (error: unknown) => {
+        this.fileBrowserLoading.set(false);
+        this.fileBrowserError.set(this.describeError(error, 'Unable to browse the server design files.'));
+      },
+    });
+  }
+
+  protected openPartFile(part: DesignPart): void {
+    const popup = window.open('about:blank', '_blank');
+    if (!popup) {
+      this.error.set('Allow pop-ups to open this file in a new tab.');
+      return;
+    }
+    popup.opener = null;
+    this.clearNotices();
+    this.designsService.partFile(this.projectId, part.id, false).subscribe({
+      next: (file) => {
+        const url = URL.createObjectURL(file);
+        popup.location.href = url;
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: (error: unknown) => {
+        popup.close();
+        this.showFileError(error);
+      },
+    });
+  }
+
+  protected downloadPartFile(part: DesignPart): void {
+    this.clearNotices();
+    this.designsService.partFile(this.projectId, part.id, true).subscribe({
+      next: (file) => {
+        const url = URL.createObjectURL(file);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = part.filePath?.split(/[\\/]/).pop() || `${part.partNumber}`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: (error: unknown) => {
+        this.showFileError(error);
+      },
+    });
   }
 
   private loadWorkspace(): void {
@@ -215,6 +429,16 @@ export class DesignPartsPage {
         this.mainAssemblies.set(workspace.mainAssemblies);
         this.permissions.set(workspace.permissions);
         this.loading.set(false);
+        if (workspace.permissions.canReadParts) {
+          this.designsService.fileRoots(this.projectId).subscribe({
+            next: (result) => this.fileRoots.set(result.roots),
+            error: (error: unknown) => {
+              this.error.set(this.describeError(error, 'Unable to load project server folders.'));
+            },
+          });
+        } else {
+          this.fileRoots.set([]);
+        }
       },
       error: (error: unknown) => {
         this.loading.set(false);
@@ -265,6 +489,8 @@ export class DesignPartsPage {
       quantity: 1,
       description: '',
       make: '',
+      modeOfPurchase: 'PURCHASE',
+      partStatus: 'NOT_STARTED',
       filePath: '',
       startDate: '',
       completedDate: '',
@@ -291,5 +517,34 @@ export class DesignPartsPage {
       return error.error.detail;
     }
     return fallback;
+  }
+
+  private showFileError(error: unknown): void {
+    if (error instanceof HttpErrorResponse && error.status === 403) {
+      this.error.set('Your project role needs PARTS_READ or PARTS_UPDATE in the DESIGN area to open or download this file.');
+      return;
+    }
+    if (!(error instanceof HttpErrorResponse) || !(error.error instanceof Blob)) {
+      this.error.set(this.describeError(
+        error,
+        'Unable to access the server file. Check that the file exists and the application server can read it.',
+      ));
+      return;
+    }
+
+    void error.error.text().then((body) => {
+      try {
+        const problem: unknown = JSON.parse(body);
+        if (typeof problem === 'object' && problem !== null
+          && 'detail' in problem && typeof problem.detail === 'string') {
+          this.error.set(problem.detail);
+          return;
+        }
+      } catch {
+        this.error.set('Unable to access the server file. Check that the file exists and the application server can read it.');
+        return;
+      }
+      this.error.set('Unable to access the server file. Check that the file exists and the application server can read it.');
+    });
   }
 }

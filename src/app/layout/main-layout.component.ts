@@ -30,6 +30,7 @@ export class MainLayoutComponent {
   protected readonly showingFeature = computed(() => [
     'Projects',
     'Design',
+    'Design folders',
     'Electrical',
     'Controls',
     'Purchase',
@@ -58,6 +59,7 @@ export class MainLayoutComponent {
       label: 'LIFECYCLE',
       items: [
         { label: 'Design', icon: 'M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4ZM13.5 7.5l3 3', route: '/designs' },
+        { label: 'Design folders', icon: 'M3 7h7l2 2h9v10H3zM3 7V5h7l2 2', route: '/design-file-roots' },
         { label: 'Electrical', icon: 'M13 2 4 14h7l-1 8 10-13h-7l1-7Z', route: '/features/electrical' },
         { label: 'Controls', icon: 'M12 3v18M3 12h18M6 6l12 12M18 6 6 18', route: '/features/controls' },
         { label: 'Purchase', icon: 'M3 4h2l2.2 11h10.9l2-8H6M9 19h.01M17 19h.01', route: '/features/purchase' },
