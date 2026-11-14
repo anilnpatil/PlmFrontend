@@ -1,23 +1,43 @@
-:host { display: block; }
-.design-parts-page { color: #24324a; }
+:host {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+}
+.design-parts-page {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  color: #24324a;
+}
 .breadcrumbs {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
   color: #64728a;
   font-size: 12px;
 }
 .breadcrumbs a { color: #4057a5; text-decoration: none; }
 .workspace-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 2px;
 }
-.workspace-header h1 { margin: 0 0 6px; color: #24324a; font-size: 25px; }
-.workspace-header p { margin: 0; color: #64728a; font-size: 13px; }
+.workspace-header > .primary-button { grid-column: 2; grid-row: 1; }
+.workflow-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-self: end;
+  gap: 5px;
+  grid-column: 3;
+  grid-row: 1;
+}
+.workspace-header > .breadcrumbs { grid-column: 1; grid-row: 1; }
 .eyebrow {
   margin: 0 0 6px;
   color: #5267a9;
@@ -42,6 +62,8 @@
 }
 .primary-button { color: #fff; background: #4057a5; }
 .secondary-button { border-color: #cbd5e1; color: #334155; background: #fff; }
+.workspace-header .primary-button,
+.workspace-header .secondary-button { min-height: 32px; padding: 6px 10px; }
 .panel { margin: 12px 0; padding: 14px; border: 1px solid #e1e6ee; border-radius: 9px; background: #fff; }
 .editor h2 { margin: 0 0 12px; font-size: 17px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -71,10 +93,18 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .empty-state p { margin: 0; color: #64728a; }
 .register-scroll {
   width: 100%;
+  min-height: 0;
+  flex: 1 1 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   border: 1px solid #cbd5e1;
   background: #fff;
+}
+.register-form {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
 }
 .register-table {
   width: 100%;
@@ -89,13 +119,23 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   vertical-align: middle;
 }
 .register-table thead tr:last-child th {
+  position: sticky;
+  top: 42px;
+  z-index: 2;
   color: #344158;
   background: #f3f6fa;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
+.bulk-part-review .bulk-part-table thead tr:last-child th {
+  top: 0;
+}
 .register-table .register-title-row th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 42px;
   padding: 11px;
   color: #172554;
   background: #e6fbfb;
@@ -172,7 +212,10 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .status-in-progress { color: #854d0e; border-color: #facc15; background: #fef9c3; }
 .status-ready { color: #166534; border-color: #86efac; background: #dcfce7; }
 @media (max-width: 700px) {
-  .workspace-header { align-items: flex-start; flex-direction: column; }
+  .workspace-header { grid-template-columns: 1fr auto; }
+  .workspace-header > .breadcrumbs { grid-column: 1 / -1; grid-row: 1; }
+  .workspace-header > .primary-button { grid-column: 1; grid-row: 2; justify-self: start; }
+  .workflow-links { grid-column: 2; grid-row: 2; }
   .form-grid { grid-template-columns: 1fr; }
   .full-width { grid-column: auto; }
 }

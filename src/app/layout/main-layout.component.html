@@ -79,7 +79,7 @@
     <button class="mobile-scrim" type="button" aria-label="Close navigation menu" (click)="closeMobileMenu()"></button>
   }
 
-  <div class="workspace-shell">
+  <div class="workspace-shell" [class.design-register-shell]="isDesignWorkspace()">
     <header class="topbar">
       <div class="topbar-start">
         <button class="icon-button menu-toggle" type="button" aria-label="Toggle navigation"
@@ -105,7 +105,8 @@
       </div>
     </header>
 
-    <main class="main-content" [class.design-workspace-content]="isDesignWorkspace()">
+    <main class="main-content" [class.design-workspace-content]="isDesignWorkspace()"
+      [class.wide-workflow-content]="isWorkflowWorkspace()">
       @if (showingFeature()) {
         <router-outlet />
       } @else {

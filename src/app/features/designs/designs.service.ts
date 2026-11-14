@@ -143,6 +143,10 @@ export class DesignsService {
     return this.http.post<DesignPart>(`${this.projectUrl(projectId)}/parts`, request);
   }
 
+  updatePart(projectId: number, partId: number, request: DesignPartRequest): Observable<DesignPart> {
+    return this.http.put<DesignPart>(`${this.projectUrl(projectId)}/parts/${partId}`, request);
+  }
+
   updatePartStatus(projectId: number, partId: number, partStatus: PartStatus): Observable<DesignPart> {
     return this.http.patch<DesignPart>(
       `${this.projectUrl(projectId)}/parts/${partId}/status`,

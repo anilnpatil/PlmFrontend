@@ -347,6 +347,19 @@ input:focus-visible {
   transition: margin-left 180ms ease;
 }
 
+.workspace-shell.design-register-shell {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-shell.design-register-shell .main-content.design-workspace-content {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .topbar {
   position: sticky;
   z-index: 10;
@@ -506,7 +519,13 @@ input:focus-visible {
 .main-content.design-workspace-content {
   width: 100%;
   max-width: none;
-  padding: 14px 14px 20px;
+  padding: 4px 14px 12px;
+}
+
+.main-content.wide-workflow-content {
+  width: 100%;
+  max-width: none;
+  padding: 20px 24px 28px;
 }
 
 .design-workspace .hierarchy-panel {
@@ -1288,6 +1307,7 @@ input:focus-visible {
   padding: 20px;
   background: rgb(15 23 42 / 45%);
 }
+.design-parts-page .file-browser-backdrop.file-browser-for-edit { z-index: 40; }
 
 .design-parts-page .file-browser {
   display: flex;
@@ -1343,6 +1363,93 @@ input:focus-visible {
 
 .design-parts-page .file-browser-entry:last-child { border-bottom: 0; }
 .design-parts-page .file-browser-entry:hover { background: #f1f6fb; }
+.design-parts-page .file-entry-select { cursor: pointer; }
+.design-parts-page .file-entry-select input {
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
+.design-parts-page .file-browser-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: #526179;
+  font-size: 12px;
+}
+.design-parts-page .bulk-part-review-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 55%);
+}
+.design-parts-page .bulk-part-review {
+  display: flex;
+  width: min(1500px, 100%);
+  height: min(78vh, 760px);
+  min-height: 320px;
+  max-height: min(900px, 94vh);
+  flex-direction: column;
+  margin: 0;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgb(15 23 42 / 24%);
+}
+.design-parts-page .bulk-part-review form {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+.design-parts-page .bulk-part-scroll {
+  min-height: 0;
+  max-height: none;
+  flex: 1 1 auto;
+  margin-top: 12px;
+}
+.design-parts-page .bulk-part-review .bulk-part-table thead tr:last-child th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f3f6fa;
+}
+.design-parts-page .bulk-part-table { min-width: 1900px; }
+.design-parts-page .bulk-part-table input,
+.design-parts-page .bulk-part-table select,
+.design-parts-page .bulk-part-table textarea { min-width: 120px; }
+.design-parts-page .bulk-part-table textarea { min-width: 180px; }
+.design-parts-page .bulk-part-table .review-file-path {
+  min-width: 180px;
+  max-width: 280px;
+  overflow-wrap: anywhere;
+}
+.design-parts-page .bulk-part-review > h2 { margin: 0 0 4px; }
+.design-parts-page .bulk-part-review > .field-help { margin: 0; }
+.design-parts-page .bulk-part-review-footer {
+  padding-top: 8px;
+  background: #fff;
+}
+.design-parts-page .bulk-part-review-footer .form-actions { margin-top: 8px; }
+.design-parts-page .part-edit-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 31;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 55%);
+}
+.design-parts-page .part-edit-dialog {
+  width: min(900px, 100%);
+  max-height: 94vh;
+  overflow: auto;
+  box-shadow: 0 16px 48px rgb(15 23 42 / 24%);
+}
+.design-parts-page .editable-part-row { cursor: zoom-in; }
 .design-parts-page .file-entry-kind { width: 48px; color: #64728a; font-size: 10px; text-transform: uppercase; }
 .design-parts-page .file-browser-status { padding: 16px; color: #64728a; font-size: 12px; text-align: center; }
 .design-parts-page .sr-only {

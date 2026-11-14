@@ -1,0 +1,188 @@
+<section class="operations-page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a routerLink="/features/purchase">Project operations</a><span>/</span>
+    <a routerLink="/projects">{{ project()?.projectName ?? 'Project' }}</a><span>/</span>
+    <span>{{ heading }}</span>
+  </nav>
+
+  <header class="workspace-header">
+    <div>
+      <p class="eyebrow">PROJECT COMPONENT WORKFLOW</p>
+      <h1>{{ project()?.projectName ?? heading }} · {{ heading }}</h1>
+      <p>Components appear here when Design marks them Ready to purchase and selects the matching mode.</p>
+    </div>
+    <a class="secondary-button" [routerLink]="['/projects', projectId, 'design-part']">Back to Design</a>
+  </header>
+
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+  @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }
+
+  @if (loading()) {
+    <p class="panel empty-state" role="status">Loading components…</p>
+  } @else if (components().length === 0) {
+    <section class="panel empty-state">
+      <h2>No components ready</h2>
+      <p>Parts assigned to {{ flowType }} appear here after their Design status is set to Ready to purchase.</p>
+    </section>
+  } @else {
+    @for (group of componentGroups(); track group.title) {
+      <section class="queue-section">
+        <h2>{{ group.title }}</h2>
+        <p class="table-hint">Double-click a component row to edit its workflow details.</p>
+        <div class="table-scroll">
+          <form #workflowForm="ngForm" (ngSubmit)="saveWorkflow()"
+            (keydown.enter)="saveWorkflowFromKeyboard($event, workflowForm)">
+            <table class="components-table">
+              <thead>
+                <tr>
+                  <th>Part number</th><th>Part name</th><th>Supplier name</th><th>Quantity</th><th>Assembly</th>
+                  <th>Quotation status</th><th>Quotation price</th><th>Quotation requested date</th>
+                  <th>Quotation received date</th><th>Negotiation price</th><th>Final price</th>
+                  <th>PO released status</th><th>PO released date</th><th>Lead time</th>
+                  <th>Part receiving date</th><th>Received status</th><th>Quality</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (component of group.components; track component.designPartId) {
+                  <tr [class.editing-row]="isEditing(component)"
+                    [attr.title]="isEditing(component) ? null : 'Double-click to edit workflow details'"
+                    (dblclick)="startEditing(component)">
+                    <td>{{ component.partNumber }}</td>
+                    <td>{{ component.partName }}</td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <input type="text" name="supplierName" [(ngModel)]="draft.supplierName" maxlength="150"
+                          aria-label="Supplier name" />
+                      } @else {
+                        {{ component.supplierName || '—' }}
+                      }
+                    </td>
+                    <td>{{ component.quantity }}</td>
+                    <td>{{ component.mainAssemblyNumber }}{{ component.subAssemblyNumber ? ' / ' + component.subAssemblyNumber : '' }}</td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <select name="quotationStatus" [(ngModel)]="draft.quotationStatus" required>
+                          @for (status of quotationStatuses; track status.value) {
+                            <option [ngValue]="status.value">{{ status.label }}</option>
+                          }
+                        </select>
+                      } @else {
+                        {{ statusLabel(component.quotationStatus, quotationStatuses) }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <input type="number" name="quotationPrice" [(ngModel)]="draft.quotationPrice" min="0" step="0.01" />
+                      } @else {
+                        {{ component.quotationPrice === null ? '—' : (component.quotationPrice | number:'1.2-2') + ' ' + component.currencyCode }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <input type="date" name="quotationRequestedDate" [(ngModel)]="draft.quotationRequestedDate"
+                          [required]="draft.quotationStatus !== 'NOT_REQUESTED'" />
+                      } @else {
+                        {{ component.quotationRequestedDate || '—' }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <input type="date" name="quotationReceivedDate" [(ngModel)]="draft.quotationReceivedDate"
+                          [required]="draft.quotationStatus === 'RECEIVED'" />
+                      } @else {
+                        {{ component.quotationReceivedDate || '—' }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <input type="number" name="negotiationPrice" [(ngModel)]="draft.negotiationPrice" min="0" step="0.01" />
+                      } @else {
+                        {{ component.negotiationPrice === null ? '—' : (component.negotiationPrice | number:'1.2-2') + ' INR' }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <input type="number" name="finalPrice" [(ngModel)]="draft.finalPrice" min="0" step="0.01" />
+                      } @else {
+                        {{ component.finalPrice === null ? '—' : (component.finalPrice | number:'1.2-2') + ' INR' }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <select name="purchaseOrderStatus" [(ngModel)]="draft.purchaseOrderStatus" required>
+                          @for (status of purchaseOrderStatuses; track status.value) {
+                            <option [ngValue]="status.value">{{ status.label }}</option>
+                          }
+                        </select>
+                      } @else {
+                        {{ statusLabel(component.purchaseOrderStatus, purchaseOrderStatuses) }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <input type="date" name="purchaseOrderReleasedDate" [(ngModel)]="draft.purchaseOrderReleasedDate"
+                          [required]="draft.purchaseOrderStatus === 'RELEASED'" />
+                      } @else {
+                        {{ component.purchaseOrderReleasedDate || '—' }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <input type="number" name="leadTimeDays" [(ngModel)]="draft.leadTimeDays" min="0" step="1" />
+                      } @else {
+                        {{ component.leadTimeDays === null ? '—' : component.leadTimeDays + ' days' }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <input type="date" name="partReceivingDate" [(ngModel)]="draft.partReceivingDate"
+                          [required]="draft.partReceivedStatus !== 'NOT_RECEIVED'" />
+                      } @else {
+                        {{ component.partReceivingDate || '—' }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <select name="partReceivedStatus" [(ngModel)]="draft.partReceivedStatus" required>
+                          @for (status of partReceivedStatuses; track status.value) {
+                            <option [ngValue]="status.value">{{ status.label }}</option>
+                          }
+                        </select>
+                      } @else {
+                        {{ statusLabel(component.partReceivedStatus, partReceivedStatuses) }}
+                      }
+                    </td>
+                    <td>
+                      @if (isEditing(component)) {
+                        <select name="qualityStatus" [(ngModel)]="draft.qualityStatus" required>
+                          @for (status of qualityStatuses; track status.value) {
+                            <option [ngValue]="status.value">{{ status.label }}</option>
+                          }
+                        </select>
+                      } @else {
+                        {{ statusLabel(component.qualityStatus, qualityStatuses) }}
+                      }
+                    </td>
+                    <td class="workflow-actions" (dblclick)="$event.stopPropagation()">
+                      @if (isEditing(component)) {
+                        <button class="primary-button" type="submit"
+                          [disabled]="workflowForm.invalid || saving()">
+                          {{ saving() ? 'Saving…' : 'Save' }}
+                        </button>
+                        <button class="secondary-button" type="button" [disabled]="saving()"
+                          (click)="cancelEditing()">Cancel</button>
+                      } @else {
+                        <button class="secondary-button" type="button"
+                          (click)="startEditing(component)">Edit</button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </form>
+        </div>
+      </section>
+    }
+  }
+</section>

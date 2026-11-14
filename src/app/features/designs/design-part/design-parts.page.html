@@ -1,34 +1,32 @@
 <section class="design-parts-page">
-  <nav class="breadcrumbs" aria-label="Breadcrumb">
-    <a routerLink="/designs">Design</a><span>/</span>
-    <a routerLink="/projects">Projects</a><span>/</span>
-    <span>{{ project()?.projectName ?? 'Project' }}</span><span>/</span>
-    <span>Design Part</span>
-  </nav>
-
   <header class="workspace-header">
-    <div>
-      <p class="eyebrow">PROJECT DESIGN WORKSPACE</p>
-      <h1>{{ project()?.projectName ?? 'Design Part' }} Design list</h1>
-      <p class="project-reference">
-        Project: <strong>{{ project()?.projectName ?? 'Loading project…' }}</strong>
-        @if (project()) { <span>· {{ project()?.projectNumber }}</span> }
-      </p>
-    </div>
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a routerLink="/designs">Design</a><span>/</span>
+      <a routerLink="/projects">Projects</a><span>/</span>
+      <span>{{ project()?.projectName ?? 'Project' }}</span><span>/</span>
+      <span>Design Part</span>
+    </nav>
     @if (permissions().canCreateAssembly) {
       <button class="primary-button" type="button" (click)="startMainAssembly()">Add main assembly</button>
     }
+    <nav class="workflow-links" aria-label="Project component workflows">
+      <a class="secondary-button" [routerLink]="['/projects', projectId, 'purchase']">Purchase</a>
+      <a class="secondary-button" [routerLink]="['/projects', projectId, 'manufacturing']">Manufacturing</a>
+      <a class="secondary-button" [routerLink]="['/projects', projectId, 'stock']">Stock</a>
+    </nav>
   </header>
 
   @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
   @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }
   @if (fileBrowserOpen()) {
-    <div class="file-browser-backdrop">
+    <div class="file-browser-backdrop" [class.file-browser-for-edit]="fileBrowserPurpose() === 'edit-part'">
       <section class="file-browser panel" role="dialog" aria-modal="true" aria-labelledby="file-browser-title">
         <header class="file-browser-header">
           <div>
             <p class="eyebrow">APPLICATION SERVER</p>
-            <h2 id="file-browser-title">Choose a design file</h2>
+            <h2 id="file-browser-title">
+              {{ fileBrowserPurpose() === 'edit-part' ? 'Choose a file for this part' : 'Choose design files' }}
+            </h2>
           </div>
           <button class="secondary-button" type="button" (click)="closeFileBrowser()">Close</button>
         </header>
@@ -61,13 +59,25 @@
                   <span class="file-entry-kind">Folder</span><span>{{ entry.name }}</span>
                 </button>
               } @else {
-                <button class="file-browser-entry" type="button" (click)="selectServerFile(entry)">
+                <label class="file-browser-entry file-entry-select">
+                  <input type="checkbox" [checked]="isServerFileSelected(entry)"
+                    (change)="toggleServerFile(entry, $event)" />
                   <span class="file-entry-kind">File</span><span>{{ entry.name }}</span>
-                </button>
+                </label>
               }
             } @empty {
               <p class="file-browser-status">This folder contains no accessible files or folders.</p>
             }
+          </div>
+          <div class="file-browser-actions">
+            <span>{{ selectedServerFiles().size }} file(s) selected</span>
+            <button class="primary-button" type="button"
+              [disabled]="fileBrowserPurpose() === 'edit-part'
+                ? selectedServerFiles().size !== 1
+                : selectedServerFiles().size === 0"
+              (click)="useSelectedServerFiles()">
+              {{ fileBrowserPurpose() === 'edit-part' ? 'Attach selected file' : 'Use selected files' }}
+            </button>
           </div>
         }
       </section>
@@ -147,11 +157,15 @@
             </select>
           </label>
           <label>Part status
-            <select name="partStatus" [(ngModel)]="partDraft.partStatus" required>
-              @for (status of partStatuses; track status.value) {
+            <select name="partStatus" [ngModel]="partDraft.partStatus"
+              (ngModelChange)="onDraftPartStatusChange($event)" required>
+              @for (status of createPartStatuses(); track status.value) {
                 <option [ngValue]="status.value">{{ status.label }}</option>
               }
             </select>
+          </label>
+          <label>Created by
+            <input [value]="currentUserEmail()" readonly />
           </label>
           <label class="full-width">Description
             <textarea name="description" [(ngModel)]="partDraft.description" maxlength="2000" rows="2"></textarea>
@@ -165,10 +179,10 @@
             <small class="field-help">Choose a file from the server folder to fill its complete path and part details automatically.</small>
           </label>
           <label>Start date
-            <input type="date" name="startDate" [(ngModel)]="partDraft.startDate" />
+            <input type="date" name="startDate" [ngModel]="partDraft.startDate" readonly />
           </label>
           <label>Completed date
-            <input type="date" name="completedDate" [(ngModel)]="partDraft.completedDate" />
+            <input type="date" name="completedDate" [ngModel]="partDraft.completedDate" readonly />
           </label>
         </div>
         <div class="form-actions">
@@ -181,6 +195,110 @@
     </section>
   }
 
+  @if (editor() === 'bulk-part') {
+    <div class="bulk-part-review-backdrop">
+      <section class="panel editor bulk-part-review" role="dialog" aria-modal="true"
+        aria-labelledby="bulk-part-form-title">
+        <h2 id="bulk-part-form-title">Review {{ bulkPartDrafts().length === 1 ? 'part' : 'selected parts' }}</h2>
+        <p class="field-help">Each selected file is shown as a row. Review or edit its assembly, part details, purchase mode, and status before saving.</p>
+        <form #bulkPartForm="ngForm" (ngSubmit)="saveBulkParts(bulkPartForm)">
+          <div class="register-scroll bulk-part-scroll">
+            <table class="register-table bulk-part-table">
+              <thead>
+                <tr>
+                  <th>File name</th>
+                  <th>File path</th>
+                  <th>Main assembly</th>
+                  <th>Subassembly</th>
+                  <th>Part number</th>
+                  <th>Part name</th>
+                  <th>Quantity</th>
+                  <th>Description</th>
+                  <th>Make</th>
+                  <th>Mode of purchase</th>
+                  <th>Part status</th>
+                  <th>Created by</th>
+                  <th>Start date</th>
+                  <th>Completed date</th>
+                  <th>Remove</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (draft of bulkPartDrafts(); track draft.filePath; let index = $index) {
+                  <tr>
+                    <td class="review-file-path" [title]="draft.fileName">{{ draft.fileName }}</td>
+                    <td class="review-file-path" [title]="draft.filePath">{{ draft.filePath }}</td>
+                    <td>
+                      <select [name]="'bulkMainAssembly-' + index" [ngModel]="draft.mainAssemblyId"
+                        (ngModelChange)="onBulkMainAssemblyChange(draft, $event)" required>
+                        @for (assembly of mainAssemblies(); track assembly.id) {
+                          <option [ngValue]="assembly.id">{{ assembly.assemblyNumber }}</option>
+                        }
+                      </select>
+                    </td>
+                    <td>
+                      <select [name]="'bulkSubAssembly-' + index" [(ngModel)]="draft.subAssemblyId">
+                        <option [ngValue]="null">Direct</option>
+                        @for (assembly of mainAssemblies(); track assembly.id) {
+                          @if (assembly.id === draft.mainAssemblyId) {
+                            @for (subAssembly of assembly.subAssemblies; track subAssembly.id) {
+                              <option [ngValue]="subAssembly.id">{{ subAssembly.assemblyNumber }}</option>
+                            }
+                          }
+                        }
+                      </select>
+                    </td>
+                    <td><input [name]="'bulkPartNumber-' + index" [(ngModel)]="draft.partNumber"
+                      required maxlength="50" /></td>
+                    <td><input [name]="'bulkPartName-' + index" [(ngModel)]="draft.partName"
+                      required maxlength="120" /></td>
+                    <td><input type="number" [name]="'bulkPartQuantity-' + index"
+                      [(ngModel)]="draft.quantity" required min="0.001" step="0.001" /></td>
+                    <td><textarea [name]="'bulkPartDescription-' + index" [(ngModel)]="draft.description"
+                      maxlength="2000" rows="2"></textarea></td>
+                    <td><input [name]="'bulkPartMake-' + index" [(ngModel)]="draft.make" maxlength="100" /></td>
+                    <td>
+                      <select [name]="'bulkPartMode-' + index" [(ngModel)]="draft.modeOfPurchase" required>
+                        @for (mode of purchaseModes; track mode.value) {
+                          <option [ngValue]="mode.value">{{ mode.label }}</option>
+                        }
+                      </select>
+                    </td>
+                    <td>
+                      <select [name]="'bulkPartStatus-' + index" [ngModel]="draft.partStatus"
+                        (ngModelChange)="onBulkPartStatusChange(draft, $event)" required>
+                        @for (status of createPartStatuses(); track status.value) {
+                          <option [ngValue]="status.value">{{ status.label }}</option>
+                        }
+                      </select>
+                    </td>
+                    <td>{{ currentUserEmail() }}</td>
+                    <td>{{ draft.startDate || '—' }}</td>
+                    <td>{{ draft.completedDate || '—' }}</td>
+                    <td><button class="table-action" type="button" [disabled]="saving()"
+                      (click)="removeBulkPart(index)">Remove</button></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="15">No files selected.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="bulk-part-review-footer">
+            <p class="field-help">Start date is set to today when saved. Completed date is set when status becomes Ready to purchase.</p>
+            <div class="form-actions">
+              <button class="primary-button" type="submit"
+                [disabled]="bulkPartForm.invalid || saving() || bulkPartDrafts().length === 0">
+              {{ saving() ? 'Saving…' : bulkPartDrafts().length === 1 ? 'Save part' : 'Save selected parts' }}
+              </button>
+              <button class="secondary-button" type="button" [disabled]="saving()" (click)="cancelEditor()">Cancel</button>
+            </div>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+
   @if (loading()) {
     <section class="panel empty-state" role="status">Loading project design list…</section>
   } @else if (mainAssemblies().length === 0) {
@@ -189,11 +307,14 @@
       <p>Add a main assembly to start this project's design list.</p>
     </section>
   } @else {
-    <div class="register-scroll">
-      <table class="register-table">
+    <p class="field-help">Double-click a part row or choose Edit to update it. Press Enter to save.</p>
+    <form class="register-form" #partEditForm="ngForm" (ngSubmit)="savePartEdit(partEditForm)"
+      (keydown.enter)="savePartEditFromKeyboard($event, partEditForm)">
+      <div class="register-scroll">
+        <table class="register-table">
         <thead>
           <tr class="register-title-row">
-            <th colspan="13">{{ project()?.projectName }} Project Design list</th>
+            <th colspan="14">{{ project()?.projectName }} Project Design list</th>
           </tr>
           <tr>
             <th scope="col">Main Assemblies</th>
@@ -209,6 +330,7 @@
             <th scope="col">File path</th>
             <th scope="col">Start date</th>
             <th scope="col">Completed date</th>
+            <th scope="col">Action</th>
           </tr>
         </thead>
         @for (mainAssembly of mainAssemblies(); track mainAssembly.id) {
@@ -218,7 +340,13 @@
                 <tr
                   [class.subassembly-part-row]="row.subAssembly !== null"
                   [class.direct-part-row]="row.subAssembly === null && row.part !== null"
-                  [class.empty-assembly-row]="row.part === null">
+                  [class.empty-assembly-row]="row.part === null"
+                  [class.editable-part-row]="row.part !== null && permissions().canUpdateParts"
+                  [class.editing-row]="row.part && editingPart()?.id === row.part.id"
+                  [attr.title]="row.part && permissions().canUpdateParts && editingPart()?.id !== row.part.id
+                    ? 'Double-click to edit part details'
+                    : null"
+                  (dblclick)="row.part && editPart(row.part, $event)">
                   @if (row.mainAssemblyFirst) {
                     <th scope="rowgroup" class="main-assembly-cell"
                       [attr.rowspan]="row.mainAssemblyRowSpan">
@@ -251,22 +379,77 @@
                     </td>
                   }
                   @if (row.part) {
-                    <td class="part-number-cell">{{ row.part.partNumber }}</td>
-                    <td class="part-name-cell">{{ row.part.partName }}</td>
-                    <td class="quantity-cell">{{ row.part.quantity }}</td>
-                    <td>{{ row.part.description || '—' }}</td>
-                    <td>{{ row.part.make || '—' }}</td>
-                    <td>{{ purchaseModeLabel(row.part.modeOfPurchase) }}</td>
+                    <td class="part-number-cell">
+                      @if (editingPart()?.id === row.part.id) {
+                        <input name="editPartNumber" [(ngModel)]="partDraft.partNumber"
+                          aria-label="Part number" required maxlength="50" />
+                      } @else {
+                        {{ row.part.partNumber }}
+                      }
+                    </td>
+                    <td class="part-name-cell">
+                      @if (editingPart()?.id === row.part.id) {
+                        <input name="editPartName" [(ngModel)]="partDraft.partName"
+                          aria-label="Part name" required maxlength="120" />
+                      } @else {
+                        {{ row.part.partName }}
+                      }
+                    </td>
+                    <td class="quantity-cell">
+                      @if (editingPart()?.id === row.part.id) {
+                        <input type="number" name="editQuantity" [(ngModel)]="partDraft.quantity"
+                          aria-label="Quantity" required min="1" step="1" />
+                      } @else {
+                        {{ row.part.quantity }}
+                      }
+                    </td>
+                    <td>
+                      @if (editingPart()?.id === row.part.id) {
+                        <textarea name="editDescription" [(ngModel)]="partDraft.description"
+                          aria-label="Description" maxlength="2000" rows="2"></textarea>
+                      } @else {
+                        {{ row.part.description || '—' }}
+                      }
+                    </td>
+                    <td>
+                      @if (editingPart()?.id === row.part.id) {
+                        <input name="editMake" [(ngModel)]="partDraft.make"
+                          aria-label="Make" maxlength="100" />
+                      } @else {
+                        {{ row.part.make || '—' }}
+                      }
+                    </td>
+                    <td>
+                      @if (editingPart()?.id === row.part.id) {
+                        <select name="editModeOfPurchase" [(ngModel)]="partDraft.modeOfPurchase"
+                          aria-label="Mode of purchase" required>
+                          @for (mode of purchaseModes; track mode.value) {
+                            <option [ngValue]="mode.value">{{ mode.label }}</option>
+                          }
+                        </select>
+                      } @else {
+                        {{ purchaseModeLabel(row.part.modeOfPurchase) }}
+                      }
+                    </td>
                     <td class="status-cell">
-                      @if (permissions().canUpdateParts) {
+                      @if (editingPart()?.id === row.part.id) {
+                        <select name="editPartStatus" [ngModel]="partDraft.partStatus"
+                          (ngModelChange)="onDraftPartStatusChange($event)"
+                          aria-label="Part status" required>
+                          @for (status of partStatuses; track status.value) {
+                            <option [ngValue]="status.value">{{ status.label }}</option>
+                          }
+                        </select>
+                      } @else if (permissions().canUpdateParts) {
                         <select class="part-status status-select"
                           [class.status-not-started]="row.part.partStatus === 'NOT_STARTED'"
                           [class.status-in-progress]="row.part.partStatus === 'IN_PROGRESS'"
                           [class.status-ready]="row.part.partStatus === 'READY_TO_PURCHASE'"
-                          [value]="row.part.partStatus"
+                          [ngModel]="row.part.partStatus"
+                          [ngModelOptions]="{ standalone: true }"
                           [disabled]="updatingPartStatuses().has(row.part.id)"
                           [attr.aria-label]="'Update status for ' + row.part.partNumber"
-                          (change)="updatePartStatus(row.part, $event)">
+                          (ngModelChange)="updatePartStatus(row.part, $event)">
                           @for (status of partStatuses; track status.value) {
                             <option [value]="status.value">{{ status.label }}</option>
                           }
@@ -282,7 +465,11 @@
                     </td>
                     <td>{{ row.part.createdBy }}</td>
                     <td class="file-path">
-                      @if (row.part.filePath) {
+                      @if (editingPart()?.id === row.part.id) {
+                        <input name="editFilePath" [(ngModel)]="partDraft.filePath"
+                          aria-label="File path" maxlength="2048" />
+                        <button class="table-action" type="button" (click)="browseFilesForEdit()">Browse</button>
+                      } @else if (row.part.filePath) {
                         <span>{{ row.part.filePath }}</span>
                         <div class="file-actions">
                           <button class="table-action" type="button" (click)="openPartFile(row.part!)">Open</button>
@@ -293,9 +480,21 @@
                       }
                     </td>
                     <td>{{ row.part.startDate || '—' }}</td>
-                    <td>{{ row.part.completedDate || '—' }}</td>
+                    <td>{{ (editingPart()?.id === row.part.id ? partDraft.completedDate : row.part.completedDate) || '—' }}</td>
+                    <td class="row-actions" (dblclick)="$event.stopPropagation()">
+                      @if (editingPart()?.id === row.part.id) {
+                        <button class="primary-button" type="submit" [disabled]="partEditForm.invalid || saving()">
+                          {{ saving() ? 'Saving…' : 'Save' }}
+                        </button>
+                        <button class="secondary-button" type="button" [disabled]="saving()"
+                          (click)="cancelEditor()">Cancel</button>
+                      } @else if (permissions().canUpdateParts) {
+                        <button class="secondary-button" type="button"
+                          (click)="editPart(row.part!)">Edit</button>
+                      }
+                    </td>
                   } @else {
-                    <td colspan="11" class="empty-register-cell">
+                    <td colspan="12" class="empty-register-cell">
                       @if (permissions().canReadParts) {
                         No parts have been added to this assembly yet.
                       } @else {
@@ -308,7 +507,8 @@
             }
           </tbody>
         }
-      </table>
-    </div>
+        </table>
+      </div>
+    </form>
   }
 </section>

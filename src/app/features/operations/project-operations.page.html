@@ -1,0 +1,30 @@
+<section class="operations-page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Workspace</a><span>/</span><span>Project operations</span>
+  </nav>
+  <header class="workspace-header">
+    <div>
+      <p class="eyebrow">PROJECT LIFECYCLE</p>
+      <h1>{{ heading }}</h1>
+      <p>Select a project to open its {{ flow }} workspace.</p>
+    </div>
+  </header>
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+  @if (loading()) {
+    <p class="panel empty-state" role="status">Loading projects…</p>
+  } @else if (projects().length === 0) {
+    <section class="panel empty-state"><h2>No projects found</h2></section>
+  } @else {
+    <div class="project-grid">
+      @for (project of projects(); track project.id) {
+        <article class="panel project-card">
+          <h2>{{ project.projectName }}</h2>
+          <p>{{ project.projectNumber }} · {{ project.customerName }}</p>
+          <div class="form-actions">
+            <a class="secondary-button" [routerLink]="['/projects', project.id, flow]">{{ actionLabel }}</a>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

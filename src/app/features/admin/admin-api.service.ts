@@ -24,8 +24,11 @@ export interface ProjectAssignment {
   fullName: string;
   roles: string[];
   functionalAreas: string[];
+  areaAccess: Record<string, 'READ_ONLY' | 'READ_WRITE'>;
   assignedAt: string;
 }
+
+export type AreaAccessLevel = 'READ_ONLY' | 'READ_WRITE';
 
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
@@ -76,10 +79,10 @@ export class AdminApiService {
     return this.http.get<ProjectAssignment[]>(`${this.api}/projects/${projectId}/assignments`);
   }
 
-  assignUser(projectId: number, userId: number, roleCodes: string[], functionalAreaCodes: string[]): Observable<ProjectAssignment> {
+  assignUser(projectId: number, userId: number, areaAccess: Record<string, AreaAccessLevel>): Observable<ProjectAssignment> {
     return this.http.put<ProjectAssignment>(
       `${this.api}/projects/${projectId}/assignments/${userId}`,
-      { roleCodes, functionalAreaCodes },
+      { roleCodes: [], functionalAreaCodes: [], areaAccess },
     );
   }
 

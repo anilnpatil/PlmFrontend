@@ -1,0 +1,80 @@
+<section class="operations-page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a routerLink="/features/purchase">Project operations</a><span>/</span>
+    <a routerLink="/projects">{{ project()?.projectName ?? 'Project' }}</a><span>/</span>
+    <span>Project stock</span>
+  </nav>
+
+  <header class="workspace-header">
+    <div>
+      <p class="eyebrow">PROJECT INVENTORY</p>
+      <h1>{{ project()?.projectName ?? 'Project' }} · Stock</h1>
+      <p>Parts assigned to Stock and marked Ready to purchase appear here as available project stock.</p>
+    </div>
+    <a class="secondary-button" [routerLink]="['/projects', projectId, 'design-part']">Back to Design</a>
+  </header>
+
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+  @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }
+
+  @if (selectedPartId() !== null) {
+    <section class="panel editor" aria-labelledby="stock-form-title">
+      <h2 id="stock-form-title">Update project stock</h2>
+      <form #stockForm="ngForm" (ngSubmit)="saveStock()">
+        <div class="form-grid">
+          <label>Total stock weight (kg)
+            <input type="number" name="totalWeightKg" [(ngModel)]="totalWeightKg"
+              required min="0" step="0.001" />
+          </label>
+          <label>Availability
+            <select name="availabilityStatus" [(ngModel)]="availabilityStatus" required>
+              @for (status of availabilityStatuses; track status.value) {
+                <option [ngValue]="status.value">{{ status.label }}</option>
+              }
+            </select>
+          </label>
+        </div>
+        <p class="field-help">Weight is the total weight for this project stock item.</p>
+        <div class="form-actions">
+          <button class="primary-button" type="submit" [disabled]="stockForm.invalid || saving()">
+            {{ saving() ? 'Saving…' : 'Save stock details' }}
+          </button>
+          <button class="secondary-button" type="button" (click)="cancelEditing()">Cancel</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (loading()) {
+    <p class="panel empty-state" role="status">Loading project stock…</p>
+  } @else if (components().length === 0) {
+    <section class="panel empty-state">
+      <h2>No stock components available</h2>
+      <p>Set a part's mode to Stock and status to Ready to purchase in Design to list it here.</p>
+    </section>
+  } @else {
+    <div class="table-scroll">
+      <table class="components-table">
+        <thead>
+          <tr>
+            <th>Part number</th><th>Part name</th><th>Quantity</th><th>Assembly</th>
+            <th>Total weight</th><th>Availability</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (component of components(); track component.designPartId) {
+            <tr>
+              <td>{{ component.partNumber }}</td>
+              <td>{{ component.partName }}</td>
+              <td>{{ component.quantity }}</td>
+              <td>{{ component.mainAssemblyNumber }}{{ component.subAssemblyNumber ? ' / ' + component.subAssemblyNumber : '' }}</td>
+              <td>{{ component.totalWeightKg === null ? 'Not recorded' : component.totalWeightKg + ' kg' }}</td>
+              <td>{{ component.availabilityStatus === 'AVAILABLE' ? 'Available' : 'Unavailable' }}</td>
+              <td><button class="secondary-button" type="button" (click)="startEditing(component)">Update</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
