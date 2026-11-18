@@ -15,6 +15,7 @@ export interface ProcurementComponent {
   workflowId: number | null;
   partNumber: string;
   partName: string;
+  supplierId: number | null;
   supplierName: string | null;
   quantity: number;
   mainAssemblyNumber: string;
@@ -37,6 +38,7 @@ export interface ProcurementComponent {
 }
 
 export interface ProcurementWorkflowRequest {
+  supplierId: number | null;
   supplierName: string | null;
   quotationStatus: QuotationStatus;
   quotationRequestedDate: string | null;

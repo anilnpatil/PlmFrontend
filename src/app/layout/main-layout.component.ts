@@ -8,6 +8,7 @@ interface NavigationItem {
   icon: string;
   badge?: string;
   route?: string;
+  permission?: string;
 }
 
 interface NavigationGroup {
@@ -36,6 +37,7 @@ export class MainLayoutComponent {
     'Controls',
     'Purchase',
     'Manufacturing',
+    'Suppliers',
     'Stock',
     'FAT',
     'SAT',
@@ -63,14 +65,16 @@ export class MainLayoutComponent {
       label: 'LIFECYCLE',
       items: [
         { label: 'Design', icon: 'M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4ZM13.5 7.5l3 3', route: '/designs' },
-        { label: 'Purchase', icon: 'M3 4h2l2.2 11h10.9l2-8H6M9 19h.01M17 19h.01', route: '/features/purchase' },
+        { label: 'Purchase', icon: 'M3 4h2l2.2 11h10.9l2-8H6M9 19h.01M17 19h.01', route: '/features/purchase' },        
         { label: 'Manufacturing', icon: 'M3 21h18M5 21V7l4 2V5l4 2V3l6 3v15M9 21v-4h3v4', route: '/features/manufacturing' },
         { label: 'Stock', icon: 'M3 7l9-4 9 4-9 4-9-4ZM3 12l9 4 9-4M3 17l9 4 9-4', route: '/features/stock' },
+        { label: 'Suppliers', icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', route: '/suppliers', permission: 'SOURCING_SUPPLIER_MANAGE' },
+        { label: 'Electrical', icon: 'M13 2 4 14h7l-1 8 10-13h-7l1-7Z', route: '/features/electrical' },
+        { label: 'Controls', icon: 'M12 3v18M3 12h18M6 6l12 12M18 6 6 18', route: '/features/controls' },
         { label: 'FAT', icon: 'M4 5h16v14H4zM8 9h8M8 13h5', route: '/features/fat' },
         { label: 'SAT', icon: 'M4 5h16v14H4zM8 9l2 2 5-5M8 15h8', route: '/features/sat' },        
         { label: 'Design folders', icon: 'M3 7h7l2 2h9v10H3zM3 7V5h7l2 2', route: '/design-file-roots' },
-        { label: 'Electrical', icon: 'M13 2 4 14h7l-1 8 10-13h-7l1-7Z', route: '/features/electrical' },
-        { label: 'Controls', icon: 'M12 3v18M3 12h18M6 6l12 12M18 6 6 18', route: '/features/controls' },
+        
         
         
         

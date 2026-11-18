@@ -1,0 +1,52 @@
+<div class="supplier-autocomplete">
+  <div class="supplier-input-wrap">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg>
+    <input type="text"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls="supplier-suggestions"
+      [attr.aria-expanded]="open()"
+      [value]="inputValue()"
+      [placeholder]="'Search ' + (supplierType() === 'PURCHASE' ? 'purchase' : 'manufacturing') + ' suppliers'"
+      (input)="onInput($event)"
+      (focus)="onFocus()"
+      (blur)="onBlur()" />
+    @if (selectedSupplierId() !== null || query()) {
+      <button type="button" class="clear-button" aria-label="Clear supplier" (mousedown)="$event.preventDefault()"
+        (click)="clearSupplier()">×</button>
+    }
+  </div>
+
+  @if (open()) {
+    <div class="suggestion-menu" id="supplier-suggestions" role="listbox">
+      @if (error()) {
+        <p class="suggestion-message error" role="alert">{{ error() }}</p>
+      } @else if (query().trim().length < 2) {
+        <p class="suggestion-message">Type at least 2 characters to search.</p>
+      } @else if (loading()) {
+        <p class="suggestion-message" role="status">Searching suppliers…</p>
+      } @else {
+        @for (supplier of suggestions(); track supplier.id) {
+          <button type="button" role="option" class="suggestion-option"
+            (mousedown)="$event.preventDefault()" (click)="selectSupplier(supplier)">
+            <span class="supplier-avatar">{{ supplier.name.slice(0, 1).toUpperCase() }}</span>
+            <span class="suggestion-copy"><strong>{{ supplier.name }}</strong><small>{{ supplier.supplierNumber }}</small></span>
+          </button>
+        }
+        @if (suggestions().length === 0) {
+          <p class="suggestion-message">
+            {{ canManageSuppliers()
+              ? 'No matching suppliers. Add this supplier to continue.'
+              : 'No matching suppliers. Ask a supplier manager to add it.' }}
+          </p>
+        }
+        @if (canManageSuppliers()) {
+          <button type="button" class="add-supplier-option" (mousedown)="$event.preventDefault()"
+            (click)="requestNewSupplier()">
+            <span aria-hidden="true">+</span> Add “{{ query().trim() }}” as a supplier
+          </button>
+        }
+      }
+    </div>
+  }
+</div>

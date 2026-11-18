@@ -109,7 +109,7 @@ describe('AuthService', () => {
         roles: ['DESIGNER'],
       },
       permissions: ['DESIGN_READ'],
-      lastActivityAt: Date.now() - 5 * 60 * 1000,
+      lastActivityAt: Date.now() - 500 * 60 * 1000,
     }));
 
     TestBed.resetTestingModule();

@@ -15,11 +15,20 @@ import {
   QualityStatus,
   QuotationStatus,
 } from './operations.service';
+import { SupplierAutocompleteComponent } from '../suppliers/supplier-autocomplete.component';
+import { SupplierFormComponent } from '../suppliers/supplier-form.component';
+import {
+  SupplierServiceType,
+  SupplierSuggestion,
+  SupplierUpsertRequest,
+  SuppliersService,
+} from '../suppliers/suppliers.service';
 
 @Directive()
 export abstract class ProcurementComponentsPageBase implements OnInit {
   protected abstract readonly flowType: 'purchase' | 'manufacturing';
   protected readonly operationsService = inject(OperationsService);
+  protected readonly suppliersService = inject(SuppliersService);
   private readonly projectsService = inject(ProjectsService);
   private readonly route = inject(ActivatedRoute);
   protected readonly projectId = Number(this.route.snapshot.paramMap.get('projectId'));
@@ -37,6 +46,10 @@ export abstract class ProcurementComponentsPageBase implements OnInit {
   protected readonly saving = signal(false);
   protected readonly error = signal('');
   protected readonly message = signal('');
+  protected readonly supplierFormOpen = signal(false);
+  protected readonly savingSupplier = signal(false);
+  protected readonly supplierFormError = signal('');
+  protected readonly supplierNameSeed = signal('');
   protected draft: ProcurementWorkflowRequest = this.emptyDraft();
   protected readonly quotationStatuses: Array<{ value: QuotationStatus; label: string }> = [
     { value: 'NOT_REQUESTED', label: 'Not requested' },
@@ -72,6 +85,10 @@ export abstract class ProcurementComponentsPageBase implements OnInit {
     return this.flowType === 'purchase' ? 'Purchase components' : 'Manufacturing components';
   }
 
+  protected get supplierType(): SupplierServiceType {
+    return this.flowType === 'purchase' ? 'PURCHASE' : 'MANUFACTURING';
+  }
+
   protected startEditing(component: ProcurementComponent): void {
     const selectedPartId = this.selectedPartId();
     if (selectedPartId === component.designPartId || this.saving()) {
@@ -83,6 +100,7 @@ export abstract class ProcurementComponentsPageBase implements OnInit {
     }
     this.selectedPartId.set(component.designPartId);
     this.draft = {
+      supplierId: component.supplierId,
       supplierName: component.supplierName,
       quotationStatus: component.quotationStatus ?? 'NOT_REQUESTED',
       quotationRequestedDate: component.quotationRequestedDate,
@@ -104,6 +122,47 @@ export abstract class ProcurementComponentsPageBase implements OnInit {
   protected cancelEditing(): void {
     this.selectedPartId.set(null);
     this.error.set('');
+  }
+
+  protected setSupplier(supplier: SupplierSuggestion | null): void {
+    this.draft = {
+      ...this.draft,
+      supplierId: supplier?.id ?? null,
+      supplierName: supplier?.name ?? null,
+    };
+  }
+
+  protected openSupplierForm(name: string): void {
+    this.supplierNameSeed.set(name);
+    this.supplierFormError.set('');
+    this.supplierFormOpen.set(true);
+  }
+
+  protected closeSupplierForm(): void {
+    if (!this.savingSupplier()) {
+      this.supplierFormOpen.set(false);
+      this.supplierFormError.set('');
+    }
+  }
+
+  protected createSupplier(request: SupplierUpsertRequest): void {
+    if (this.savingSupplier()) {
+      return;
+    }
+    this.savingSupplier.set(true);
+    this.supplierFormError.set('');
+    this.suppliersService.create(request).subscribe({
+      next: (supplier) => {
+        this.setSupplier(supplier);
+        this.supplierFormOpen.set(false);
+        this.savingSupplier.set(false);
+        this.message.set(`${supplier.name} was added and selected.`);
+      },
+      error: (error: unknown) => {
+        this.supplierFormError.set(this.describeError(error, 'Unable to add this supplier.'));
+        this.savingSupplier.set(false);
+      },
+    });
   }
 
   protected isEditing(component: ProcurementComponent): boolean {
@@ -206,6 +265,7 @@ export abstract class ProcurementComponentsPageBase implements OnInit {
 
   private emptyDraft(): ProcurementWorkflowRequest {
     return {
+      supplierId: null,
       supplierName: null,
       quotationStatus: 'NOT_REQUESTED',
       quotationRequestedDate: null,
@@ -225,7 +285,7 @@ export abstract class ProcurementComponentsPageBase implements OnInit {
 
 @Component({
   selector: 'app-purchase-components-page',
-  imports: [DecimalPipe, FormsModule, RouterLink],
+  imports: [DecimalPipe, FormsModule, RouterLink, SupplierAutocompleteComponent, SupplierFormComponent],
   templateUrl: './procurement-components.page.html',
   styleUrl: './operational-components.page.scss',
 })
@@ -235,7 +295,7 @@ export class PurchaseComponentsPage extends ProcurementComponentsPageBase {
 
 @Component({
   selector: 'app-manufacturing-components-page',
-  imports: [DecimalPipe, FormsModule, RouterLink],
+  imports: [DecimalPipe, FormsModule, RouterLink, SupplierAutocompleteComponent, SupplierFormComponent],
   templateUrl: './procurement-components.page.html',
   styleUrl: './operational-components.page.scss',
 })

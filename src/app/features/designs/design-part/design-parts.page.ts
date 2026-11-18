@@ -22,7 +22,18 @@ import {
   DesignsService,
 } from '../designs.service';
 
-type Editor = 'main-assembly' | 'sub-assembly' | 'part' | 'bulk-part' | null;
+type Editor =
+  | 'main-assembly'
+  | 'sub-assembly'
+  | 'edit-main-assembly'
+  | 'edit-sub-assembly'
+  | 'part'
+  | 'bulk-part'
+  | null;
+type PendingDelete =
+  | { kind: 'main-assembly'; id: number; label: string; relatedCount: number }
+  | { kind: 'sub-assembly'; id: number; label: string; relatedCount: number }
+  | { kind: 'part'; id: number; label: string };
 
 interface RegisterRow {
   part: DesignPart | null;
@@ -74,6 +85,7 @@ export class DesignPartsPage {
   protected readonly mainAssemblies = signal<DesignMainAssembly[]>([]);
   protected readonly permissions = signal<DesignPermissions>({
     canCreateAssembly: false,
+    canUpdateAssemblies: false,
     canCreatePart: false,
     canReadParts: false,
     canUpdateParts: false,
@@ -113,6 +125,7 @@ export class DesignPartsPage {
   protected readonly selectedServerFiles = signal<ReadonlyMap<string, DesignFileBrowserEntry>>(new Map());
   protected readonly bulkPartDrafts = signal<BulkPartDraft[]>([]);
   protected readonly editingPart = signal<DesignPart | null>(null);
+  protected readonly pendingDelete = signal<PendingDelete | null>(null);
   private fileBrowserContext: { mainAssemblyId: number; subAssemblyId: number | null } | null = null;
   protected assemblyDraft: AssemblyRequest = this.emptyAssemblyDraft();
   protected partDraft: PartDraft = this.emptyPartDraft();
@@ -145,15 +158,134 @@ export class DesignPartsPage {
 
   protected startMainAssembly(): void {
     this.assemblyDraft = this.emptyAssemblyDraft();
+    this.selectedMainAssemblyId.set(null);
     this.editor.set('main-assembly');
     this.clearNotices();
   }
 
   protected startSubAssembly(mainAssemblyId: number): void {
+    if (!this.permissions().canCreateAssembly) {
+      return;
+    }
     this.selectedMainAssemblyId.set(mainAssemblyId);
     this.assemblyDraft = this.emptyAssemblyDraft();
     this.editor.set('sub-assembly');
     this.clearNotices();
+  }
+
+  protected editMainAssembly(assembly: DesignMainAssembly, event?: MouseEvent): void {
+    event?.stopPropagation();
+    if (event?.target instanceof Element
+      && event.target.closest('button, a, input, select, textarea, summary')) {
+      return;
+    }
+    if (!this.permissions().canUpdateAssemblies || this.saving()) {
+      return;
+    }
+    this.assemblyDraft = {
+      assemblyNumber: assembly.assemblyNumber,
+      name: assembly.name,
+      description: assembly.description ?? '',
+    };
+    this.selectedMainAssemblyId.set(assembly.id);
+    this.editor.set('edit-main-assembly');
+    this.clearNotices();
+  }
+
+  protected editSubAssembly(assembly: DesignSubAssembly, event?: MouseEvent): void {
+    event?.stopPropagation();
+    if (event?.target instanceof Element
+      && event.target.closest('button, a, input, select, textarea, summary')) {
+      return;
+    }
+    if (!this.permissions().canUpdateAssemblies || this.saving()) {
+      return;
+    }
+    this.assemblyDraft = {
+      assemblyNumber: assembly.assemblyNumber,
+      name: assembly.name,
+      description: assembly.description ?? '',
+    };
+    this.selectedMainAssemblyId.set(assembly.mainAssemblyId);
+    this.selectedSubAssemblyId.set(assembly.id);
+    this.editor.set('edit-sub-assembly');
+    this.clearNotices();
+  }
+
+  protected requestDeleteMainAssembly(assembly: DesignMainAssembly): void {
+    if (!this.permissions().canUpdateAssemblies) {
+      return;
+    }
+    this.pendingDelete.set({
+      kind: 'main-assembly',
+      id: assembly.id,
+      label: `${assembly.assemblyNumber} ${assembly.name}`,
+      relatedCount: assembly.parts.length + assembly.subAssemblies.length,
+    });
+  }
+
+  protected requestDeleteSubAssembly(assembly: DesignSubAssembly): void {
+    if (!this.permissions().canUpdateAssemblies) {
+      return;
+    }
+    this.pendingDelete.set({
+      kind: 'sub-assembly',
+      id: assembly.id,
+      label: `${assembly.assemblyNumber} ${assembly.name}`,
+      relatedCount: assembly.parts.length,
+    });
+  }
+
+  protected requestDeletePart(part: DesignPart): void {
+    if (!this.permissions().canUpdateParts) {
+      return;
+    }
+    this.pendingDelete.set({
+      kind: 'part',
+      id: part.id,
+      label: `${part.partNumber} ${part.partName}`,
+    });
+  }
+
+  protected deletePendingItem(): void {
+    const pending = this.pendingDelete();
+    if (!pending || this.saving()) {
+      return;
+    }
+    this.saving.set(true);
+    const deletion = pending.kind === 'main-assembly'
+      ? this.designsService.deleteMainAssembly(this.projectId, pending.id)
+      : pending.kind === 'sub-assembly'
+        ? this.designsService.deleteSubAssembly(this.projectId, pending.id)
+        : this.designsService.deletePart(this.projectId, pending.id);
+    deletion.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.pendingDelete.set(null);
+        this.message.set(`${pending.kind === 'main-assembly' ? 'Main assembly' : pending.kind === 'sub-assembly' ? 'Subassembly' : 'Part'} deleted.`);
+        this.loadWorkspace();
+      },
+      error: (error: unknown) => {
+        this.saving.set(false);
+        this.pendingDelete.set(null);
+        this.error.set(this.describeError(error, `Unable to delete ${pending.label}.`));
+      },
+    });
+  }
+
+  protected cancelDelete(): void {
+    if (!this.saving()) {
+      this.pendingDelete.set(null);
+    }
+  }
+
+  protected closeAssemblyMenu(event: Event): void {
+    const details = event.currentTarget instanceof HTMLElement
+      ? event.currentTarget.closest('details')
+      : null;
+    if (details) {
+      details.open = false;
+    }
   }
 
   protected startPart(mainAssemblyId: number | null = null, subAssemblyId: number | null = null): void {
@@ -297,7 +429,7 @@ export class DesignPartsPage {
 
   protected editPart(part: DesignPart, event?: MouseEvent): void {
     const target = event?.target;
-    if (target instanceof Element && target.closest('button, a, input, select, textarea')) {
+    if (target instanceof Element && target.closest('button, a, input, select, textarea, summary')) {
       return;
     }
     if (this.saving() || this.updatingPartStatuses().has(part.id) || this.editingPart()?.id === part.id) {
@@ -432,7 +564,9 @@ export class DesignPartsPage {
       name: this.assemblyDraft.name.trim(),
       description: this.assemblyDraft.description.trim(),
     };
-    const isMainAssembly = this.editor() === 'main-assembly';
+    const editor = this.editor();
+    const isMainAssembly = editor === 'main-assembly' || editor === 'edit-main-assembly';
+    const isEditing = editor === 'edit-main-assembly' || editor === 'edit-sub-assembly';
     const mainAssemblyId = this.selectedMainAssemblyId();
     if (!isMainAssembly && mainAssemblyId === null) {
       this.error.set('Select a main assembly for this subassembly.');
@@ -443,13 +577,40 @@ export class DesignPartsPage {
     const onSaved = (): void => {
         this.saving.set(false);
         this.editor.set(null);
-        this.message.set(isMainAssembly ? 'Main assembly created.' : 'Subassembly created.');
+        this.message.set(isEditing
+          ? (isMainAssembly ? 'Main assembly updated.' : 'Subassembly updated.')
+          : (isMainAssembly ? 'Main assembly created.' : 'Subassembly created.'));
         this.loadWorkspace();
     };
     const onError = (error: unknown): void => {
         this.saving.set(false);
         this.error.set(this.describeError(error, 'Unable to save the assembly.'));
     };
+    if (editor === 'edit-main-assembly') {
+      if (mainAssemblyId === null) {
+        this.saving.set(false);
+        this.error.set('Select a main assembly to update.');
+        return;
+      }
+      this.designsService.updateMainAssembly(this.projectId, mainAssemblyId, request).subscribe({
+        next: onSaved,
+        error: onError,
+      });
+      return;
+    }
+    if (editor === 'edit-sub-assembly') {
+      const subAssemblyId = this.selectedSubAssemblyId();
+      if (subAssemblyId === null) {
+        this.saving.set(false);
+        this.error.set('Select a subassembly to update.');
+        return;
+      }
+      this.designsService.updateSubAssembly(this.projectId, subAssemblyId, request).subscribe({
+        next: onSaved,
+        error: onError,
+      });
+      return;
+    }
     if (isMainAssembly) {
       this.designsService.createMainAssembly(this.projectId, request).subscribe({
         next: onSaved,
@@ -541,6 +702,7 @@ export class DesignPartsPage {
   protected cancelEditor(): void {
     this.editor.set(null);
     this.editingPart.set(null);
+    this.selectedSubAssemblyId.set(null);
     this.bulkPartDrafts.set([]);
     this.error.set('');
   }

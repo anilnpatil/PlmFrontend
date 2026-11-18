@@ -6,6 +6,7 @@ import { environment } from '../../environment';
 
 export interface DesignPermissions {
   canCreateAssembly: boolean;
+  canUpdateAssemblies: boolean;
   canCreatePart: boolean;
   canReadParts: boolean;
   canUpdateParts: boolean;
@@ -139,12 +140,46 @@ export class DesignsService {
     );
   }
 
+  updateMainAssembly(
+    projectId: number,
+    mainAssemblyId: number,
+    request: AssemblyRequest,
+  ): Observable<DesignMainAssembly> {
+    return this.http.put<DesignMainAssembly>(
+      `${this.projectUrl(projectId)}/main-assemblies/${mainAssemblyId}`,
+      request,
+    );
+  }
+
+  deleteMainAssembly(projectId: number, mainAssemblyId: number): Observable<void> {
+    return this.http.delete<void>(`${this.projectUrl(projectId)}/main-assemblies/${mainAssemblyId}`);
+  }
+
+  updateSubAssembly(
+    projectId: number,
+    subAssemblyId: number,
+    request: AssemblyRequest,
+  ): Observable<DesignSubAssembly> {
+    return this.http.put<DesignSubAssembly>(
+      `${this.projectUrl(projectId)}/sub-assemblies/${subAssemblyId}`,
+      request,
+    );
+  }
+
+  deleteSubAssembly(projectId: number, subAssemblyId: number): Observable<void> {
+    return this.http.delete<void>(`${this.projectUrl(projectId)}/sub-assemblies/${subAssemblyId}`);
+  }
+
   createPart(projectId: number, request: DesignPartRequest): Observable<DesignPart> {
     return this.http.post<DesignPart>(`${this.projectUrl(projectId)}/parts`, request);
   }
 
   updatePart(projectId: number, partId: number, request: DesignPartRequest): Observable<DesignPart> {
     return this.http.put<DesignPart>(`${this.projectUrl(projectId)}/parts/${partId}`, request);
+  }
+
+  deletePart(projectId: number, partId: number): Observable<void> {
+    return this.http.delete<void>(`${this.projectUrl(projectId)}/parts/${partId}`);
   }
 
   updatePartStatus(projectId: number, partId: number, partStatus: PartStatus): Observable<DesignPart> {

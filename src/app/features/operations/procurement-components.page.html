@@ -51,8 +51,12 @@
                     <td>{{ component.partName }}</td>
                     <td>
                       @if (isEditing(component)) {
-                        <input type="text" name="supplierName" [(ngModel)]="draft.supplierName" maxlength="150"
-                          aria-label="Supplier name" />
+                        <app-supplier-autocomplete
+                          [supplierType]="supplierType"
+                          [selectedSupplierId]="draft.supplierId"
+                          [selectedSupplierName]="draft.supplierName"
+                          (supplierSelected)="setSupplier($event)"
+                          (addSupplier)="openSupplierForm($event)" />
                       } @else {
                         {{ component.supplierName || '—' }}
                       }
@@ -184,5 +188,18 @@
         </div>
       </section>
     }
+  }
+
+  @if (supplierFormOpen()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeSupplierForm()">
+      <section class="modal-panel" role="dialog" aria-modal="true" aria-label="Add supplier"
+        (click)="$event.stopPropagation()">
+        @if (supplierFormError()) {
+          <p class="notice error" role="alert">{{ supplierFormError() }}</p>
+        }
+        <app-supplier-form [initialName]="supplierNameSeed()" [initialServiceType]="supplierType"
+          [saving]="savingSupplier()" (submitted)="createSupplier($event)" (cancelled)="closeSupplierForm()" />
+      </section>
+    </div>
   }
 </section>

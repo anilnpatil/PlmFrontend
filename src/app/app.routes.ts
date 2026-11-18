@@ -48,6 +48,13 @@ export const routes: Routes = [
       { path: 'projects/:projectId/purchase', component: PurchaseComponentsPage },
       { path: 'projects/:projectId/manufacturing', component: ManufacturingComponentsPage },
       { path: 'projects/:projectId/stock', component: ProjectStockPage },
+      {
+        path: 'suppliers',
+        loadComponent: () => import('./features/suppliers/suppliers.page')
+          .then((module) => module.SuppliersPage),
+        canActivate: [authGuard],
+        data: { permission: 'SOURCING_SUPPLIER_MANAGE' },
+      },
       { path: 'design-file-roots', component: DesignFileRootsPage },
       { path: 'designs', component: DesignProjectsDashboardPage },
       { path: 'projects', component: ProjectsPage },

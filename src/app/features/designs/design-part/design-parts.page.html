@@ -18,6 +18,29 @@
 
   @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
   @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }
+  @if (pendingDelete(); as deletion) {
+    <div class="file-browser-backdrop delete-confirmation-backdrop">
+      <section class="delete-confirmation panel" role="alertdialog" aria-modal="true"
+        aria-labelledby="delete-confirmation-title" aria-describedby="delete-confirmation-description">
+        <h2 id="delete-confirmation-title">Delete {{ deletion.kind === 'main-assembly'
+            ? 'main assembly' : deletion.kind === 'sub-assembly' ? 'subassembly' : 'part' }}?</h2>
+        <p id="delete-confirmation-description">
+          Delete <strong>{{ deletion.label }}</strong>? This action cannot be undone.
+          @if (deletion.kind === 'main-assembly' && deletion.relatedCount > 0) {
+            Its subassemblies and parts will also be deleted.
+          } @else if (deletion.kind === 'sub-assembly' && deletion.relatedCount > 0) {
+            Its parts will also be deleted.
+          }
+        </p>
+        <div class="form-actions">
+          <button class="danger-button" type="button" [disabled]="saving()" (click)="deletePendingItem()">
+            {{ saving() ? 'Deleting…' : 'Delete' }}
+          </button>
+          <button class="secondary-button" type="button" [disabled]="saving()" (click)="cancelDelete()">Cancel</button>
+        </div>
+      </section>
+    </div>
+  }
   @if (fileBrowserOpen()) {
     <div class="file-browser-backdrop" [class.file-browser-for-edit]="fileBrowserPurpose() === 'edit-part'">
       <section class="file-browser panel" role="dialog" aria-modal="true" aria-labelledby="file-browser-title">
@@ -84,10 +107,13 @@
     </div>
   }
 
-  @if (editor() === 'main-assembly' || editor() === 'sub-assembly') {
+  @if (editor() === 'main-assembly' || editor() === 'sub-assembly'
+      || editor() === 'edit-main-assembly' || editor() === 'edit-sub-assembly') {
     <section class="panel editor" aria-labelledby="assembly-form-title">
       <h2 id="assembly-form-title">
-        {{ editor() === 'main-assembly' ? 'Add main assembly' : 'Add subassembly' }}
+        {{ editor() === 'main-assembly' ? 'Add main assembly'
+          : editor() === 'sub-assembly' ? 'Add subassembly'
+          : editor() === 'edit-main-assembly' ? 'Edit main assembly' : 'Edit subassembly' }}
       </h2>
       <form #assemblyForm="ngForm" (ngSubmit)="saveAssembly(assemblyForm)">
         <div class="form-grid">
@@ -106,7 +132,8 @@
         }
         <div class="form-actions">
           <button class="primary-button" type="submit" [disabled]="assemblyForm.invalid || saving()">
-            {{ saving() ? 'Saving…' : 'Save assembly' }}
+            {{ saving() ? 'Saving…' : editor() === 'edit-main-assembly' || editor() === 'edit-sub-assembly'
+              ? 'Save changes' : 'Save assembly' }}
           </button>
           <button class="secondary-button" type="button" (click)="cancelEditor()">Cancel</button>
         </div>
@@ -349,29 +376,72 @@
                   (dblclick)="row.part && editPart(row.part, $event)">
                   @if (row.mainAssemblyFirst) {
                     <th scope="rowgroup" class="main-assembly-cell"
-                      [attr.rowspan]="row.mainAssemblyRowSpan">
+                      [attr.rowspan]="row.mainAssemblyRowSpan"
+                      [class.editable-assembly]="permissions().canUpdateAssemblies"
+                      [attr.title]="permissions().canUpdateAssemblies ? 'Double-click to edit main assembly' : null"
+                      (dblclick)="editMainAssembly(mainAssembly, $event)">
                       <strong>{{ mainAssembly.assemblyNumber }} {{ mainAssembly.name }}</strong>
-                      @if (permissions().canCreateAssembly) {
-                        <button class="table-action" type="button"
-                          (click)="startSubAssembly(mainAssembly.id)">Add subassembly</button>
-                      }
-                      @if (permissions().canCreatePart) {
-                        <button class="table-action" type="button"
-                          (click)="startPart(mainAssembly.id)">Add part</button>
-                        <button class="table-action" type="button"
-                          (click)="selectPathToAddPart(mainAssembly.id)">Browse server files</button>
+                      @if (permissions().canCreateAssembly || permissions().canCreatePart
+                          || permissions().canUpdateAssemblies) {
+                        <details class="assembly-actions">
+                          <summary [attr.aria-label]="'Main assembly options for ' + mainAssembly.assemblyNumber"
+                            title="Main assembly options"><span aria-hidden="true">⋮</span></summary>
+                          <div class="assembly-actions-menu">
+                            @if (permissions().canCreateAssembly) {
+                              <button type="button" (click)="startSubAssembly(mainAssembly.id); closeAssemblyMenu($event)">
+                                Add subassembly
+                              </button>
+                            }
+                            @if (permissions().canCreatePart) {
+                              <button type="button"
+                                (click)="startPart(mainAssembly.id); closeAssemblyMenu($event)">Add part</button>
+                              <button type="button"
+                                (click)="selectPathToAddPart(mainAssembly.id); closeAssemblyMenu($event)">
+                                Browse server files
+                              </button>
+                            }
+                            @if (permissions().canUpdateAssemblies) {
+                              <button type="button"
+                                (click)="editMainAssembly(mainAssembly); closeAssemblyMenu($event)">Edit</button>
+                              <button class="delete-menu-action" type="button"
+                                (click)="requestDeleteMainAssembly(mainAssembly); closeAssemblyMenu($event)">Delete</button>
+                            }
+                          </div>
+                        </details>
                       }
                     </th>
                   }
                   @if (row.subAssemblyFirst) {
-                    <td class="subassembly-cell" [attr.rowspan]="row.subAssemblyRowSpan">
+                    <td class="subassembly-cell" [attr.rowspan]="row.subAssemblyRowSpan"
+                      [class.editable-assembly]="row.subAssembly && permissions().canUpdateAssemblies"
+                      [attr.title]="row.subAssembly && permissions().canUpdateAssemblies
+                        ? 'Double-click to edit subassembly' : null"
+                      (dblclick)="row.subAssembly && editSubAssembly(row.subAssembly, $event)">
                       @if (row.subAssembly) {
                         <strong>{{ row.subAssembly.assemblyNumber }} {{ row.subAssembly.name }}</strong>
-                        @if (permissions().canCreatePart) {
-                          <button class="table-action" type="button"
-                            (click)="startPart(mainAssembly.id, row.subAssembly.id)">Add part</button>
-                          <button class="table-action" type="button"
-                            (click)="selectPathToAddPart(mainAssembly.id, row.subAssembly.id)">Browse server files</button>
+                        @if (permissions().canCreatePart || permissions().canUpdateAssemblies) {
+                          <details class="assembly-actions">
+                            <summary [attr.aria-label]="'Subassembly options for ' + row.subAssembly.assemblyNumber"
+                              title="Subassembly options"><span aria-hidden="true">⋮</span></summary>
+                            <div class="assembly-actions-menu">
+                              @if (permissions().canCreatePart) {
+                                <button type="button"
+                                  (click)="startPart(mainAssembly.id, row.subAssembly.id); closeAssemblyMenu($event)">
+                                  Add part
+                                </button>
+                                <button type="button"
+                                  (click)="selectPathToAddPart(mainAssembly.id, row.subAssembly.id); closeAssemblyMenu($event)">
+                                  Browse server files
+                                </button>
+                              }
+                              @if (permissions().canUpdateAssemblies) {
+                                <button type="button"
+                                  (click)="editSubAssembly(row.subAssembly); closeAssemblyMenu($event)">Edit</button>
+                                <button class="delete-menu-action" type="button"
+                                  (click)="requestDeleteSubAssembly(row.subAssembly); closeAssemblyMenu($event)">Delete</button>
+                              }
+                            </div>
+                          </details>
                         }
                       } @else {
                         <span class="muted-value">—</span>
@@ -491,6 +561,8 @@
                       } @else if (permissions().canUpdateParts) {
                         <button class="secondary-button" type="button"
                           (click)="editPart(row.part!)">Edit</button>
+                        <button class="danger-button" type="button"
+                          (click)="requestDeletePart(row.part!)">Delete</button>
                       }
                     </td>
                   } @else {

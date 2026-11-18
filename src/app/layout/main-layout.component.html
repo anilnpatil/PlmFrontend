@@ -17,11 +17,11 @@
       </button>
     </div>
 
-    <div class="workspace-picker">
+    <!-- <div class="workspace-picker">
       <span class="workspace-avatar">N</span>
       <span class="workspace-copy"><strong>Northstar Studio</strong><small>Business workspace</small></span>
       <svg class="picker-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
-    </div>
+    </div> -->
 
     <nav class="navigation">
       @if (auth.hasPermission('USERS_MANAGE')) {
@@ -34,25 +34,27 @@
         <div class="nav-group">
           <p class="nav-group-label">{{ group.label }}</p>
           @for (item of group.items; track item.label) {
-            @if (item.route) {
-              <a class="nav-item" [routerLink]="item.route"
-                [class.active]="activeTitle() === item.label"
-                [attr.aria-current]="activeTitle() === item.label ? 'page' : null"
-                [attr.title]="sidebarCollapsed() ? item.label : null" (click)="closeMobileMenu()">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="item.icon" /></svg>
-                <span>{{ item.label }}</span>
-                @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
-              </a>
-            } @else {
-              <button class="nav-item" type="button" [class.active]="activeTitle() === item.label"
-                [attr.aria-current]="activeTitle() === item.label ? 'page' : null"
-                [attr.title]="sidebarCollapsed() ? item.label : null" (click)="navigateTo(item.label)">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="item.icon" /></svg>
-                <span>{{ item.label }}</span>
-                @if (item.badge) {
-                  <span class="nav-badge">{{ item.badge }}</span>
-                }
-              </button>
+            @if (!item.permission || auth.hasPermission(item.permission)) {
+              @if (item.route) {
+                <a class="nav-item" [routerLink]="item.route"
+                  [class.active]="activeTitle() === item.label"
+                  [attr.aria-current]="activeTitle() === item.label ? 'page' : null"
+                  [attr.title]="sidebarCollapsed() ? item.label : null" (click)="closeMobileMenu()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="item.icon" /></svg>
+                  <span>{{ item.label }}</span>
+                  @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
+                </a>
+              } @else {
+                <button class="nav-item" type="button" [class.active]="activeTitle() === item.label"
+                  [attr.aria-current]="activeTitle() === item.label ? 'page' : null"
+                  [attr.title]="sidebarCollapsed() ? item.label : null" (click)="navigateTo(item.label)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="item.icon" /></svg>
+                  <span>{{ item.label }}</span>
+                  @if (item.badge) {
+                    <span class="nav-badge">{{ item.badge }}</span>
+                  }
+                </button>
+              }
             }
           }
         </div>

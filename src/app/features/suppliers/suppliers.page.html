@@ -1,0 +1,105 @@
+<section class="suppliers-page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">SOURCING DIRECTORY</p>
+      <h1>Suppliers</h1>
+      <p class="page-description">Manage supplier details and keep sourcing records consistent across projects.</p>
+    </div>
+    <button class="primary-button" type="button" (click)="openCreateForm()">
+      <span aria-hidden="true">+</span> Add supplier
+    </button>
+  </header>
+
+  @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+
+  <section class="supplier-directory" aria-label="Supplier directory">
+    <form class="directory-toolbar" (submit)="$event.preventDefault()">
+      <label class="search-field">
+        <span class="sr-only">Search suppliers</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg>
+        <input type="search" name="query" placeholder="Search name or supplier number"
+          [(ngModel)]="query" (ngModelChange)="onSearchChange($event)" />
+      </label>
+      <label class="filter-field">Status
+        <select [ngModel]="activeFilter" name="status" (ngModelChange)="onActiveFilterChange($event)">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="all">All suppliers</option>
+        </select>
+      </label>
+      <span class="result-count">{{ totalElements() }} suppliers</span>
+    </form>
+
+    @if (loading()) {
+      <div class="empty-state" role="status">Loading suppliers…</div>
+    } @else if (suppliers().length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">◎</span>
+        <h2>No suppliers found</h2>
+        <p>{{ query ? 'Try another search or add this supplier.' : 'Add a supplier to make it available in Purchase and Manufacturing.' }}</p>
+        <button class="secondary-button" type="button" (click)="openCreateForm()">Add supplier</button>
+      </div>
+    } @else {
+      <div class="table-scroll">
+        <table class="suppliers-table">
+          <thead>
+            <tr><th>Supplier</th><th>Services</th><th>Contact</th><th>Address</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr>
+          </thead>
+          <tbody>
+            @for (supplier of suppliers(); track supplier.id) {
+              <tr>
+                <td>
+                  <div class="supplier-cell">
+                    <span class="supplier-avatar">{{ supplier.name.slice(0, 1).toUpperCase() }}</span>
+                    <span><strong>{{ supplier.name }}</strong><small>{{ supplier.supplierNumber }}</small></span>
+                  </div>
+                </td>
+                <td><div class="service-chips">
+                  @for (serviceType of supplier.serviceTypes; track serviceType) {
+                    <span class="service-chip">{{ serviceTypeLabel(serviceType) }}</span>
+                  }
+                </div></td>
+                <td>
+                  <span class="contact-cell">{{ supplier.contactPerson || '—' }}</span>
+                  @if (supplier.email) { <small class="secondary-detail">{{ supplier.email }}</small> }
+                  @if (supplier.phone) { <small class="secondary-detail">{{ supplier.phone }}</small> }
+                </td>
+                <td class="address-cell">{{ supplier.address || '—' }}</td>
+                <td><span class="status-chip" [class.inactive]="!supplier.active">
+                  <span></span>{{ supplier.active ? 'Active' : 'Inactive' }}
+                </span></td>
+                <td class="row-actions">
+                  <button type="button" class="text-button" [disabled]="saving()" (click)="editSupplier(supplier)">Edit</button>
+                  <button type="button" class="text-button" [class.activate]="!supplier.active" [disabled]="saving()"
+                    (click)="toggleStatus(supplier)">{{ supplier.active ? 'Deactivate' : 'Activate' }}</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <footer class="pagination">
+        <span>Showing {{ page() * 20 + 1 }}–{{ page() * 20 + suppliers().length }} of {{ totalElements() }}</span>
+        <div>
+          <button type="button" class="secondary-button" [disabled]="page() === 0 || loading()"
+            (click)="changePage(page() - 1)">Previous</button>
+          <span>Page {{ page() + 1 }} of {{ totalPages() }}</span>
+          <button type="button" class="secondary-button" [disabled]="page() + 1 >= totalPages() || loading()"
+            (click)="changePage(page() + 1)">Next</button>
+        </div>
+      </footer>
+    }
+  </section>
+
+  @if (formOpen()) {
+    <div class="modal-backdrop" role="presentation" (click)="closeForm()">
+      <section class="modal-panel" role="dialog" aria-modal="true"
+        [attr.aria-label]="editingSupplier() ? 'Edit supplier' : 'Add supplier'" (click)="$event.stopPropagation()">
+        @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+        <app-supplier-form [supplier]="editingSupplier()" [saving]="saving()"
+          (submitted)="saveSupplier($event)" (cancelled)="closeForm()" />
+      </section>
+    </div>
+  }
+</section>
