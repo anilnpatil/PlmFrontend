@@ -34,13 +34,54 @@ export abstract class ProcurementComponentsPageBase implements OnInit {
   protected readonly projectId = Number(this.route.snapshot.paramMap.get('projectId'));
   protected readonly project = signal<Project | null>(null);
   protected readonly components = signal<ProcurementComponent[]>([]);
+  protected readonly partFilter = signal('');
+  protected readonly supplierFilter = signal('');
+  protected readonly mainAssemblyFilter = signal('');
+  protected readonly subAssemblyFilter = signal('');
+  protected readonly quotationFilter = signal<QuotationStatus | ''>('');
+  protected readonly purchaseOrderFilter = signal<PurchaseOrderStatus | ''>('');
+  protected readonly filteredComponents = computed(() => {
+    const partFilter = this.partFilter().trim().toLowerCase();
+    const supplierFilter = this.supplierFilter().trim().toLowerCase();
+    const mainAssemblyFilter = this.mainAssemblyFilter().trim().toLowerCase();
+    const subAssemblyFilter = this.subAssemblyFilter().trim().toLowerCase();
+    const quotationFilter = this.quotationFilter();
+    const purchaseOrderFilter = this.purchaseOrderFilter();
+
+    return this.components().filter((component) => {
+      const part = `${component.partNumber} ${component.partName}`.toLowerCase();
+      const supplier = (component.supplierName ?? '').toLowerCase();
+      const mainAssembly =
+        `${component.mainAssemblyName ?? ''} ${component.mainAssemblyNumber}`.toLowerCase();
+      const subAssembly =
+        `${component.subAssemblyName ?? ''} ${component.subAssemblyNumber ?? ''}`.toLowerCase();
+      const quotationMatches = !quotationFilter
+        || (component.quotationStatus ?? 'NOT_REQUESTED') === quotationFilter;
+      const purchaseOrderMatches = !purchaseOrderFilter
+        || (component.purchaseOrderStatus ?? 'NOT_RELEASED') === purchaseOrderFilter;
+
+      return part.includes(partFilter)
+        && supplier.includes(supplierFilter)
+        && mainAssembly.includes(mainAssemblyFilter)
+        && subAssembly.includes(subAssemblyFilter)
+        && quotationMatches
+        && purchaseOrderMatches;
+    });
+  });
   protected readonly componentGroups = computed(() => {
-    const components = this.components();
+    const components = this.filteredComponents();
     return [
       { title: 'New components', components: components.filter((component) => component.workflowId === null) },
       { title: 'Active workflows', components: components.filter((component) => component.workflowId !== null) },
     ].filter((group) => group.components.length > 0);
   });
+  protected readonly hasActiveFilters = computed(() =>
+    !!this.partFilter().trim()
+    || !!this.supplierFilter().trim()
+    || !!this.mainAssemblyFilter().trim()
+    || !!this.subAssemblyFilter().trim()
+    || !!this.quotationFilter()
+    || !!this.purchaseOrderFilter());
   protected readonly selectedPartId = signal<number | null>(null);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
@@ -85,6 +126,14 @@ export abstract class ProcurementComponentsPageBase implements OnInit {
     return this.flowType === 'purchase' ? 'Purchase components' : 'Manufacturing components';
   }
 
+  protected get operationsRoute(): string {
+    return this.flowType === 'purchase' ? '/features/purchase' : '/features/manufacturing';
+  }
+
+  protected get flowLabel(): string {
+    return this.flowType === 'purchase' ? 'Purchase' : 'Manufacturing';
+  }
+
   protected get supplierType(): SupplierServiceType {
     return this.flowType === 'purchase' ? 'PURCHASE' : 'MANUFACTURING';
   }
@@ -122,6 +171,46 @@ export abstract class ProcurementComponentsPageBase implements OnInit {
   protected cancelEditing(): void {
     this.selectedPartId.set(null);
     this.error.set('');
+  }
+
+  protected updateQuotationStatus(status: QuotationStatus): void {
+    this.draft.quotationStatus = status;
+    if (status === 'REQUESTED') {
+      this.draft.quotationRequestedDate = this.today();
+    } else if (status === 'RECEIVED') {
+      this.draft.quotationRequestedDate ??= this.today();
+      this.draft.quotationReceivedDate = this.today();
+    }
+  }
+
+  protected updatePurchaseOrderStatus(status: PurchaseOrderStatus): void {
+    this.draft.purchaseOrderStatus = status;
+    if (status === 'RELEASED') {
+      this.draft.purchaseOrderReleasedDate = this.today();
+    }
+  }
+
+  protected updatePartReceivedStatus(status: PartReceivedStatus): void {
+    this.draft.partReceivedStatus = status;
+    if (status !== 'NOT_RECEIVED') {
+      this.draft.partReceivingDate = this.today();
+    }
+  }
+
+  private today(): string {
+    const date = new Date();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
+
+  protected clearFilters(): void {
+    this.partFilter.set('');
+    this.supplierFilter.set('');
+    this.mainAssemblyFilter.set('');
+    this.subAssemblyFilter.set('');
+    this.quotationFilter.set('');
+    this.purchaseOrderFilter.set('');
   }
 
   protected setSupplier(supplier: SupplierSuggestion | null): void {

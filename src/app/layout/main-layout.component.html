@@ -81,24 +81,25 @@
     <button class="mobile-scrim" type="button" aria-label="Close navigation menu" (click)="closeMobileMenu()"></button>
   }
 
-  <div class="workspace-shell" [class.design-register-shell]="isDesignWorkspace()">
+  <div class="workspace-shell" [class.design-register-shell]="isDesignWorkspace()"
+    [class.project-list-shell]="isProjectsList()">
     <header class="topbar">
       <div class="topbar-start">
         <button class="icon-button menu-toggle" type="button" aria-label="Toggle navigation"
           [attr.aria-expanded]="mobileMenuOpen() || !sidebarCollapsed()" (click)="toggleNavigation()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
         </button>
-        <span class="breadcrumb-root">Workspace</span>
-        <svg class="breadcrumb-separator" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        @if (!isPurchaseWorkspace()) {
+          <span class="breadcrumb-root">Workspace</span>
+          <svg class="breadcrumb-separator" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        }
         <span class="breadcrumb-current">{{ activeTitle() }}</span>
       </div>
       <div class="topbar-actions">
-        <label class="search-box">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg>
-          <input type="search" placeholder="Search workspace" aria-label="Search workspace" />
-          <kbd>⌘ K</kbd>
-        </label>
-        <span class="topbar-divider"></span>
+        <a class="overview-back-button" routerLink="/" aria-label="Back to Overview">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6M9 12h12" /></svg>
+          <span>Overview</span>
+        </a>
         <button class="icon-button notification-button" type="button" aria-label="Notifications">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
           <span class="notification-dot"></span>
@@ -108,7 +109,8 @@
     </header>
 
     <main class="main-content" [class.design-workspace-content]="isDesignWorkspace()"
-      [class.wide-workflow-content]="isWorkflowWorkspace()">
+      [class.wide-workflow-content]="isWorkflowWorkspace()"
+      [class.project-list-workspace-content]="isProjectsList()">
       @if (showingFeature()) {
         <router-outlet />
       } @else {

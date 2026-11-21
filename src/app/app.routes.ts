@@ -49,6 +49,11 @@ export const routes: Routes = [
       { path: 'projects/:projectId/manufacturing', component: ManufacturingComponentsPage },
       { path: 'projects/:projectId/stock', component: ProjectStockPage },
       {
+        path: 'projects/:projectId/assembly',
+        loadComponent: () => import('./features/operations/assembly-components.page')
+          .then((module) => module.AssemblyComponentsPage),
+      },
+      {
         path: 'suppliers',
         loadComponent: () => import('./features/suppliers/suppliers.page')
           .then((module) => module.SuppliersPage),
@@ -61,6 +66,7 @@ export const routes: Routes = [
       { path: 'features/purchase', component: ProjectOperationsPage, data: { workflow: 'purchase' } },
       { path: 'features/manufacturing', component: ProjectOperationsPage, data: { workflow: 'manufacturing' } },
       { path: 'features/stock', component: ProjectOperationsPage, data: { workflow: 'stock' } },
+      { path: 'features/assembly', component: ProjectOperationsPage, data: { workflow: 'assembly' } },
       { path: 'features/electrical', component: ModuleDashboardPage, data: { moduleName: 'Electrical' } },
       { path: 'features/controls', component: ModuleDashboardPage, data: { moduleName: 'Controls' } },
       { path: 'features/fat', component: ModuleDashboardPage, data: { moduleName: 'FAT' } },

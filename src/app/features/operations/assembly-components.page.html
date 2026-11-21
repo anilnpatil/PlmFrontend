@@ -1,0 +1,108 @@
+<section class="operations-page assembly-page">
+  <div class="page-context">
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a routerLink="/features/assembly">Assembly projects</a><span>/</span>
+      <a routerLink="/projects">{{ project()?.projectName ?? 'Project' }}</a><span>/</span>
+      <span>Assembly</span>
+    </nav>
+    <a class="secondary-button" [routerLink]="['/projects', projectId, 'design-part']">Back to Design</a>
+  </div>
+
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+  @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }
+
+  @if (loading()) {
+    <p class="panel empty-state" role="status">Loading assembly components…</p>
+  } @else if (components().length === 0) {
+    <section class="panel empty-state">
+      <h2>No components ready for assembly</h2>
+      <p>Purchase and manufacturing parts appear when received; project stock appears when marked available.</p>
+    </section>
+  } @else {
+    <section class="assembly-summary" aria-label="Assembly progress summary">
+      <article class="summary-card">
+        <span>Ready components</span><strong>{{ components().length }}</strong>
+      </article>
+      <article class="summary-card in-progress-summary">
+        <span>In progress</span><strong>{{ inProgressCount() }}</strong>
+      </article>
+      <article class="summary-card completed-summary">
+        <span>Completed</span><strong>{{ completedCount() }}</strong>
+      </article>
+    </section>
+
+    @for (mainAssembly of groups(); track mainAssembly.id) {
+      <section class="assembly-group panel" [attr.aria-labelledby]="'main-' + mainAssembly.id">
+        <header class="assembly-group-header">
+          <div>
+            <p class="eyebrow">MAIN ASSEMBLY</p>
+            <h2 [id]="'main-' + mainAssembly.id">{{ mainAssembly.number }} · {{ mainAssembly.name }}</h2>
+          </div>
+          <span class="component-count">{{ mainAssembly.partCount }} parts</span>
+        </header>
+
+        @for (subAssembly of mainAssembly.subAssemblies; track subAssembly.key) {
+          <section class="subassembly-group" [attr.aria-label]="subAssembly.label">
+            <h3>{{ subAssembly.label }}</h3>
+            <div class="table-scroll">
+              <table class="assembly-table">
+                <thead>
+                  <tr>
+                    <th>Part number</th><th>Part name</th><th>Quantity</th><th>Source</th>
+                    <th>Assembly start</th><th>Assembly complete</th><th>Assembly status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (component of subAssembly.parts; track component.designPartId) {
+                    <tr>
+                      <td class="part-number">{{ component.partNumber }}</td>
+                      <td>{{ component.partName }}</td>
+                      <td>{{ component.quantity }}</td>
+                      <td>{{ sourceLabel(component) }}</td>
+                      <td>
+                        @if (component.assemblyStartDate) {
+                          {{ component.assemblyStartDate }}
+                        } @else if (component.assemblyStatus === 'NOT_STARTED') {
+                          <button class="secondary-button assembly-date-action" type="button"
+                            [disabled]="isSaving(component)"
+                            [attr.aria-label]="'Start assembly for ' + component.partNumber"
+                            (click)="startAssembly(component)">
+                            {{ isSaving(component) ? 'Starting…' : 'Start' }}
+                          </button>
+                        } @else {
+                          —
+                        }
+                      </td>
+                      <td>
+                        @if (component.assemblyCompleteDate) {
+                          {{ component.assemblyCompleteDate }}
+                        } @else if (component.assemblyStatus === 'IN_PROGRESS') {
+                          <button class="secondary-button assembly-date-action" type="button"
+                            [disabled]="isSaving(component)"
+                            [attr.aria-label]="'Complete assembly for ' + component.partNumber"
+                            (click)="completeAssembly(component)">
+                            {{ isSaving(component) ? 'Completing…' : 'Complete' }}
+                          </button>
+                        } @else {
+                          —
+                        }
+                      </td>
+                      <td>
+                        <span class="assembly-status"
+                          [class.status-not-started]="component.assemblyStatus === 'NOT_STARTED'"
+                          [class.status-in-progress]="component.assemblyStatus === 'IN_PROGRESS'"
+                          [class.status-completed]="component.assemblyStatus === 'COMPLETED'">
+                          {{ statusLabel(component.assemblyStatus) }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      </section>
+    }
+  }
+</section>

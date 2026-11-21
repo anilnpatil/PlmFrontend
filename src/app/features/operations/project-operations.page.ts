@@ -4,10 +4,10 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { Project, ProjectsService } from '../projects/projects.service';
 
-type OperationFlow = 'purchase' | 'manufacturing' | 'stock';
+type OperationFlow = 'purchase' | 'manufacturing' | 'stock' | 'assembly';
 
 function operationFlow(value: unknown): OperationFlow {
-  if (value === 'purchase' || value === 'manufacturing' || value === 'stock') {
+  if (value === 'purchase' || value === 'manufacturing' || value === 'stock' || value === 'assembly') {
     return value;
   }
   throw new Error('Project operations route is missing a valid workflow type.');
@@ -36,7 +36,9 @@ export class ProjectOperationsPage {
       ? 'Purchase projects'
       : this.flow === 'manufacturing'
         ? 'Manufacturing projects'
-        : 'Stock projects';
+        : this.flow === 'stock'
+          ? 'Stock projects'
+          : 'Assembly projects';
   }
 
   protected get actionLabel(): string {
@@ -47,6 +49,8 @@ export class ProjectOperationsPage {
         return 'Open Manufacturing';
       case 'stock':
         return 'Open Stock';
+      case 'assembly':
+        return 'Open Assembly';
     }
   }
 

@@ -1,14 +1,25 @@
 <section class="projects-page">
-  <header class="page-header">
-    <div>
-      <p class="eyebrow">WORKSPACE</p>
+  <section class="project-toolbar" aria-label="Project controls">
+    <header class="page-header">
       <h2>Projects</h2>
-      <p class="description">Create and manage projects across your customer portfolio.</p>
-    </div>
-    @if (canCreateProjects()) {
-      <button class="primary-button" type="button" (click)="startCreate()">Create project</button>
-    }
-  </header>
+      @if (canCreateProjects()) {
+        <button class="primary-button" type="button" (click)="startCreate()">Create project</button>
+      }
+    </header>
+
+    <form class="filters" aria-label="Project search filters" (ngSubmit)="search()">
+      <label>Project number
+        <input name="projectNumberFilter" [(ngModel)]="projectNumberFilter" />
+      </label>
+      <label>Project name
+        <input name="projectNameFilter" [(ngModel)]="projectNameFilter" />
+      </label>
+      <label>Customer
+        <input name="customerNameFilter" [(ngModel)]="customerNameFilter" />
+      </label>
+      <button class="secondary-button" type="submit" [disabled]="loading()">Search</button>
+    </form>
+  </section>
 
   @if (error()) {
     <p class="notice error" role="alert">{{ error() }}</p>
@@ -60,20 +71,7 @@
     </section>
   }
 
-  <form class="panel filters" (ngSubmit)="search()">
-    <label>Project number
-      <input name="projectNumberFilter" [(ngModel)]="projectNumberFilter" />
-    </label>
-    <label>Project name
-      <input name="projectNameFilter" [(ngModel)]="projectNameFilter" />
-    </label>
-    <label>Customer
-      <input name="customerNameFilter" [(ngModel)]="customerNameFilter" />
-    </label>
-    <button class="secondary-button" type="submit" [disabled]="loading()">Search</button>
-  </form>
-
-  <section class="panel project-list" aria-label="Project list">
+  <section class="panel project-list" aria-label="Project list" [attr.aria-busy]="loading()">
     <div class="list-heading">
       <h3>All projects</h3>
       <span>{{ totalElements() }} {{ totalElements() === 1 ? 'project' : 'projects' }}</span>
@@ -84,7 +82,7 @@
     } @else if (projects().length === 0) {
       <p class="list-status">No projects found. Try changing the search filters.</p>
     } @else {
-      <div class="table-scroll">
+      <div class="table-scroll" role="region" aria-label="Projects" tabindex="0">
         <table>
           <thead>
             <tr>

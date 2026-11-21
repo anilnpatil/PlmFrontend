@@ -1,21 +1,61 @@
 <section class="operations-page">
-  <nav class="breadcrumbs" aria-label="Breadcrumb">
-    <a routerLink="/features/purchase">Project operations</a><span>/</span>
-    <a routerLink="/projects">{{ project()?.projectName ?? 'Project' }}</a><span>/</span>
-    <span>{{ heading }}</span>
-  </nav>
-
-  <header class="workspace-header">
-    <div>
-      <p class="eyebrow">PROJECT COMPONENT WORKFLOW</p>
-      <h1>{{ project()?.projectName ?? heading }} · {{ heading }}</h1>
-      <p>Components appear here when Design marks them Ready to purchase and selects the matching mode.</p>
-    </div>
+  <div class="page-context">
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a [routerLink]="operationsRoute">
+        {{ flowLabel }}
+      </a><span>/</span>
+      <a routerLink="/projects">{{ project()?.projectName ?? 'Project' }}</a><span>/</span>
+      <span>Components</span>
+    </nav>
     <a class="secondary-button" [routerLink]="['/projects', projectId, 'design-part']">Back to Design</a>
-  </header>
+  </div>
 
   @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
   @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }
+
+  @if (!loading() && components().length > 0) {
+    <section class="component-filters" aria-label="Filter components">
+      <label>Part name or number
+        <input type="search" [ngModel]="partFilter()"
+          (ngModelChange)="partFilter.set($event)" [ngModelOptions]="{standalone: true}" />
+      </label>
+      <label>Supplier
+        <input type="search" [ngModel]="supplierFilter()"
+          (ngModelChange)="supplierFilter.set($event)" [ngModelOptions]="{standalone: true}" />
+      </label>
+      <label>Main assembly name or number
+        <input type="search" [ngModel]="mainAssemblyFilter()"
+          (ngModelChange)="mainAssemblyFilter.set($event)" [ngModelOptions]="{standalone: true}" />
+      </label>
+      <label>Subassembly name or number
+        <input type="search" [ngModel]="subAssemblyFilter()"
+          (ngModelChange)="subAssemblyFilter.set($event)" [ngModelOptions]="{standalone: true}" />
+      </label>
+      <label>Quotation status
+        <select [ngModel]="quotationFilter()"
+          (ngModelChange)="quotationFilter.set($event)" [ngModelOptions]="{standalone: true}">
+          <option value="">All statuses</option>
+          @for (status of quotationStatuses; track status.value) {
+            <option [ngValue]="status.value">{{ status.label }}</option>
+          }
+        </select>
+      </label>
+      <label>PO status
+        <select [ngModel]="purchaseOrderFilter()"
+          (ngModelChange)="purchaseOrderFilter.set($event)" [ngModelOptions]="{standalone: true}">
+          <option value="">All statuses</option>
+          @for (status of purchaseOrderStatuses; track status.value) {
+            <option [ngValue]="status.value">{{ status.label }}</option>
+          }
+        </select>
+      </label>
+      <button class="secondary-button clear-filters" type="button"
+        [disabled]="!hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
+      <p class="filter-count" aria-live="polite">
+        Showing {{ filteredComponents().length }} of {{ components().length }} components
+      </p>
+    </section>
+  }
 
   @if (loading()) {
     <p class="panel empty-state" role="status">Loading components…</p>
@@ -23,6 +63,12 @@
     <section class="panel empty-state">
       <h2>No components ready</h2>
       <p>Parts assigned to {{ flowType }} appear here after their Design status is set to Ready to purchase.</p>
+    </section>
+  } @else if (filteredComponents().length === 0) {
+    <section class="panel empty-state">
+      <h2>No matching components</h2>
+      <p>Adjust your filters or clear them to see all components.</p>
+      <button class="secondary-button" type="button" (click)="clearFilters()">Clear filters</button>
     </section>
   } @else {
     @for (group of componentGroups(); track group.title) {
@@ -39,7 +85,7 @@
                   <th>Quotation status</th><th>Quotation price</th><th>Quotation requested date</th>
                   <th>Quotation received date</th><th>Negotiation price</th><th>Final price</th>
                   <th>PO released status</th><th>PO released date</th><th>Lead time</th>
-                  <th>Part receiving date</th><th>Received status</th><th>Quality</th><th>Action</th>
+                  <th>Part received date</th><th>Received status</th><th>Quality</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -65,13 +111,19 @@
                     <td>{{ component.mainAssemblyNumber }}{{ component.subAssemblyNumber ? ' / ' + component.subAssemblyNumber : '' }}</td>
                     <td>
                       @if (isEditing(component)) {
-                        <select name="quotationStatus" [(ngModel)]="draft.quotationStatus" required>
+                        <select name="quotationStatus" [ngModel]="draft.quotationStatus"
+                          (ngModelChange)="updateQuotationStatus($event)" required>
                           @for (status of quotationStatuses; track status.value) {
                             <option [ngValue]="status.value">{{ status.label }}</option>
                           }
                         </select>
                       } @else {
-                        {{ statusLabel(component.quotationStatus, quotationStatuses) }}
+                        <span class="status-badge"
+                          [class.status-not-requested]="component.quotationStatus === null || component.quotationStatus === 'NOT_REQUESTED'"
+                          [class.status-requested]="component.quotationStatus === 'REQUESTED'"
+                          [class.status-received]="component.quotationStatus === 'RECEIVED'">
+                          {{ statusLabel(component.quotationStatus ?? 'NOT_REQUESTED', quotationStatuses) }}
+                        </span>
                       }
                     </td>
                     <td>
@@ -84,6 +136,7 @@
                     <td>
                       @if (isEditing(component)) {
                         <input type="date" name="quotationRequestedDate" [(ngModel)]="draft.quotationRequestedDate"
+                          [attr.aria-label]="'Quotation requested date for ' + component.partNumber"
                           [required]="draft.quotationStatus !== 'NOT_REQUESTED'" />
                       } @else {
                         {{ component.quotationRequestedDate || '—' }}
@@ -92,6 +145,7 @@
                     <td>
                       @if (isEditing(component)) {
                         <input type="date" name="quotationReceivedDate" [(ngModel)]="draft.quotationReceivedDate"
+                          [attr.aria-label]="'Quotation received date for ' + component.partNumber"
                           [required]="draft.quotationStatus === 'RECEIVED'" />
                       } @else {
                         {{ component.quotationReceivedDate || '—' }}
@@ -113,18 +167,24 @@
                     </td>
                     <td>
                       @if (isEditing(component)) {
-                        <select name="purchaseOrderStatus" [(ngModel)]="draft.purchaseOrderStatus" required>
+                        <select name="purchaseOrderStatus" [ngModel]="draft.purchaseOrderStatus"
+                          (ngModelChange)="updatePurchaseOrderStatus($event)" required>
                           @for (status of purchaseOrderStatuses; track status.value) {
                             <option [ngValue]="status.value">{{ status.label }}</option>
                           }
                         </select>
                       } @else {
-                        {{ statusLabel(component.purchaseOrderStatus, purchaseOrderStatuses) }}
+                        <span class="status-badge"
+                          [class.status-not-released]="component.purchaseOrderStatus === null || component.purchaseOrderStatus === 'NOT_RELEASED'"
+                          [class.status-released]="component.purchaseOrderStatus === 'RELEASED'">
+                          {{ statusLabel(component.purchaseOrderStatus ?? 'NOT_RELEASED', purchaseOrderStatuses) }}
+                        </span>
                       }
                     </td>
                     <td>
                       @if (isEditing(component)) {
                         <input type="date" name="purchaseOrderReleasedDate" [(ngModel)]="draft.purchaseOrderReleasedDate"
+                          [attr.aria-label]="'PO released date for ' + component.partNumber"
                           [required]="draft.purchaseOrderStatus === 'RELEASED'" />
                       } @else {
                         {{ component.purchaseOrderReleasedDate || '—' }}
@@ -140,6 +200,7 @@
                     <td>
                       @if (isEditing(component)) {
                         <input type="date" name="partReceivingDate" [(ngModel)]="draft.partReceivingDate"
+                          [attr.aria-label]="'Part received date for ' + component.partNumber"
                           [required]="draft.partReceivedStatus !== 'NOT_RECEIVED'" />
                       } @else {
                         {{ component.partReceivingDate || '—' }}
@@ -147,13 +208,19 @@
                     </td>
                     <td>
                       @if (isEditing(component)) {
-                        <select name="partReceivedStatus" [(ngModel)]="draft.partReceivedStatus" required>
+                        <select name="partReceivedStatus" [ngModel]="draft.partReceivedStatus"
+                          (ngModelChange)="updatePartReceivedStatus($event)" required>
                           @for (status of partReceivedStatuses; track status.value) {
                             <option [ngValue]="status.value">{{ status.label }}</option>
                           }
                         </select>
                       } @else {
-                        {{ statusLabel(component.partReceivedStatus, partReceivedStatuses) }}
+                        <span class="status-badge"
+                          [class.status-not-received]="component.partReceivedStatus === null || component.partReceivedStatus === 'NOT_RECEIVED'"
+                          [class.status-partially-received]="component.partReceivedStatus === 'PARTIALLY_RECEIVED'"
+                          [class.status-received]="component.partReceivedStatus === 'RECEIVED'">
+                          {{ statusLabel(component.partReceivedStatus ?? 'NOT_RECEIVED', partReceivedStatuses) }}
+                        </span>
                       }
                     </td>
                     <td>
@@ -164,7 +231,13 @@
                           }
                         </select>
                       } @else {
-                        {{ statusLabel(component.qualityStatus, qualityStatuses) }}
+                        <span class="status-badge"
+                          [class.status-pending]="component.qualityStatus === null || component.qualityStatus === 'PENDING'"
+                          [class.status-ok]="component.qualityStatus === 'OK'"
+                          [class.status-not-ok]="component.qualityStatus === 'NOT_OK'"
+                          [class.status-rework]="component.qualityStatus === 'REWORK'">
+                          {{ statusLabel(component.qualityStatus ?? 'PENDING', qualityStatuses) }}
+                        </span>
                       }
                     </td>
                     <td class="workflow-actions" (dblclick)="$event.stopPropagation()">

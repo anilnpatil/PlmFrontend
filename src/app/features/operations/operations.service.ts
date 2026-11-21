@@ -9,6 +9,7 @@ export type PurchaseOrderStatus = 'NOT_RELEASED' | 'RELEASED';
 export type PartReceivedStatus = 'NOT_RECEIVED' | 'PARTIALLY_RECEIVED' | 'RECEIVED';
 export type QualityStatus = 'PENDING' | 'OK' | 'NOT_OK' | 'REWORK';
 export type AvailabilityStatus = 'AVAILABLE' | 'UNAVAILABLE';
+export type AssemblyStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 
 export interface ProcurementComponent {
   designPartId: number;
@@ -19,7 +20,9 @@ export interface ProcurementComponent {
   supplierName: string | null;
   quantity: number;
   mainAssemblyNumber: string;
+  mainAssemblyName: string;
   subAssemblyNumber: string | null;
+  subAssemblyName: string | null;
   description: string | null;
   filePath: string | null;
   quotationStatus: QuotationStatus | null;
@@ -73,6 +76,23 @@ export interface ProjectStockUpdateRequest {
   availabilityStatus: AvailabilityStatus;
 }
 
+export interface AssemblyComponent {
+  designPartId: number;
+  mainAssemblyId: number;
+  mainAssemblyNumber: string;
+  mainAssemblyName: string;
+  subAssemblyId: number | null;
+  subAssemblyNumber: string | null;
+  subAssemblyName: string | null;
+  partNumber: string;
+  partName: string;
+  quantity: number;
+  modeOfPurchase: 'PURCHASE' | 'MANUFACTURE' | 'STOCK' | null;
+  assemblyStartDate: string | null;
+  assemblyCompleteDate: string | null;
+  assemblyStatus: AssemblyStatus;
+}
+
 @Injectable({ providedIn: 'root' })
 export class OperationsService {
   private readonly http = inject(HttpClient);
@@ -119,6 +139,30 @@ export class OperationsService {
     return this.http.put<ProjectStockComponent>(
       `${this.projectUrl(projectId)}/stock/components/${designPartId}`,
       request,
+    );
+  }
+
+  assemblyComponents(projectId: number): Observable<AssemblyComponent[]> {
+    return this.http.get<AssemblyComponent[]>(`${this.projectUrl(projectId)}/assembly/components`);
+  }
+
+  startAssemblyComponent(
+    projectId: number,
+    designPartId: number,
+  ): Observable<AssemblyComponent> {
+    return this.http.post<AssemblyComponent>(
+      `${this.projectUrl(projectId)}/assembly/components/${designPartId}/start`,
+      null,
+    );
+  }
+
+  completeAssemblyComponent(
+    projectId: number,
+    designPartId: number,
+  ): Observable<AssemblyComponent> {
+    return this.http.post<AssemblyComponent>(
+      `${this.projectUrl(projectId)}/assembly/components/${designPartId}/complete`,
+      null,
     );
   }
 

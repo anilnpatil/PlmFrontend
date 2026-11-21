@@ -6,7 +6,7 @@ import { environment } from '../../environment';
 import { AuthUser, LoginResponse } from './auth.models';
 
 const SESSION_STORAGE_KEY = 'plm.auth.session';
-export const SESSION_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+export const SESSION_IDLE_TIMEOUT_MS = 50 * 60 * 1000;
 
 interface StoredSession {
   accessToken: string;

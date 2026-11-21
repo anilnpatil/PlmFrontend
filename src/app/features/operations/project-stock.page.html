@@ -1,18 +1,12 @@
 <section class="operations-page">
-  <nav class="breadcrumbs" aria-label="Breadcrumb">
-    <a routerLink="/features/purchase">Project operations</a><span>/</span>
-    <a routerLink="/projects">{{ project()?.projectName ?? 'Project' }}</a><span>/</span>
-    <span>Project stock</span>
-  </nav>
-
-  <header class="workspace-header">
-    <div>
-      <p class="eyebrow">PROJECT INVENTORY</p>
-      <h1>{{ project()?.projectName ?? 'Project' }} · Stock</h1>
-      <p>Parts assigned to Stock and marked Ready to purchase appear here as available project stock.</p>
-    </div>
+  <div class="page-context">
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a routerLink="/features/stock">Stock</a><span>/</span>
+      <a routerLink="/projects">{{ project()?.projectName ?? 'Project' }}</a><span>/</span>
+      <span>Project stock</span>
+    </nav>
     <a class="secondary-button" [routerLink]="['/projects', projectId, 'design-part']">Back to Design</a>
-  </header>
+  </div>
 
   @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
   @if (message()) { <p class="notice success" role="status">{{ message() }}</p> }

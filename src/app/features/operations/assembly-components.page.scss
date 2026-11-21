@@ -1,0 +1,29 @@
+.assembly-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.summary-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid #e1e6ee; border-radius: 9px; color: #64728a; background: #fff; font-size: 12px; }
+.summary-card strong { color: #24324a; font-size: 22px; }
+.in-progress-summary strong { color: #925b0a; }
+.completed-summary strong { color: #197048; }
+.assembly-group { margin: 16px 0; padding: 0; overflow: hidden; }
+.assembly-group-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 16px; border-bottom: 1px solid #e1e6ee; background: #f7f9fc; }
+.assembly-group-header .eyebrow { margin-bottom: 4px !important; }
+.assembly-group-header h2 { margin: 0; color: #24324a; font-size: 17px; }
+.component-count { padding: 5px 9px; border-radius: 999px; color: #4057a5; background: #e9edfb; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.subassembly-group { padding: 14px 16px 0; }
+.subassembly-group:last-child { padding-bottom: 16px; }
+.subassembly-group h3 { margin: 0 0 8px; color: #5267a9; font-size: 13px; }
+.assembly-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 12px; }
+.assembly-table th, .assembly-table td { padding: 9px 10px; border: 1px solid #e1e6ee; text-align: left; vertical-align: middle; }
+.assembly-table th { color: #344158; background: #f3f6fa; white-space: nowrap; }
+.assembly-table .part-number { font-family: Consolas, 'Courier New', monospace; font-weight: 700; white-space: nowrap; }
+.assembly-date-action { min-height: 30px; padding: 5px 10px; white-space: nowrap; }
+.assembly-table .editing-row { background: #f1f5ff; }
+.assembly-status { display: inline-flex; padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.status-not-started { color: #596579; background: #edf0f4; }
+.status-in-progress { color: #87530a; background: #fff3d7; }
+.status-completed { color: #176b44; background: #e4f5eb; }
+@media (max-width: 600px) {
+  .assembly-summary { grid-template-columns: 1fr; gap: 8px; }
+  .summary-card { padding: 11px 13px; }
+  .assembly-group-header { align-items: flex-start; }
+  .subassembly-group { padding-right: 10px; padding-left: 10px; }
+}
